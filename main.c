@@ -32,13 +32,13 @@ int main(int argc, char* argv[]) {
 
     // --- MPI Initialization --- //
     int thrd_sprt;
-    MPI_Init_thread(&argc, &argv, MPI_THREAD_SINGLE, &thrd_sprt);
+    MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &thrd_sprt);
     ntwrk = MPI_COMM_WORLD;
     MPI_Comm_size(ntwrk, &p);
     MPI_Comm_rank(ntwrk, &rnk);
     
     
-    clock_t start = clock(), diff;
+    clock_t start = clock(), diff; // for maybe function
 
     
     if(rnk == 0) {
@@ -75,6 +75,24 @@ int main(int argc, char* argv[]) {
     if (*ptr != '\0' || n < 1) {
         if (rnk == 0) {
             Usage(argv[0], 1);
+        }
+        MPI_Finalize();
+        return 0;
+    }
+    
+    thrds = strtol(argv[2], &ptr, 10); // Parse the nubmer of threads
+    if (*ptr != '\0' || thrds < 1) {
+        if (rnk == 0) {
+            Usage(argv[0],2);
+        }
+        MPI_Finalize();
+        return 0;
+    }
+    
+    g = strtol(argv[3], &ptr, 10); // Parse the number of ghost cell layers to communicate
+    if (*ptr != '\0' || g < 1) {
+        if (rnk == 0) {
+            Usage(argv[0],3);
         }
         MPI_Finalize();
         return 0;
@@ -120,7 +138,7 @@ int main(int argc, char* argv[]) {
         // long int guess = GenVal(rnk);
         double guess = GenVal(diff);
         //printf("%f\n" guess);
-        Maybe("Who is Henshaw's Favorite?\n", guess);
+        Maybe("Will I ever be as cool as Fan Long?\n", guess);
     }
 
 
@@ -146,6 +164,14 @@ void Usage(char* name, int error) {
         case 1:
             printf("   Unable to parse size of the matrix.\n");
             printf("   The size of the matrix should be a positive integer.\n");
+            break;
+        case 2:
+            printf("   Unable to parse the number of trheads.\n");
+            printf("   The number of threads should be a positive integer.\n");
+            break;
+        case 3:
+            printf("   Unable to parse the number of ghost layers.\n");
+            printf("   The number of ghost layers should be a positive integer.\n");
             break;
         default:
             printf("   The Maybe function is the best function in the world.\n");
