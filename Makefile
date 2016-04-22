@@ -1,2 +1,2 @@
 make:
-	mpicc poissonSolverWithoutRandom.c -lm -lpthread -o poissonSolver.o
+	mpicc poissonSolverWithoutRandom.c poissonProblemInputs.c -lm -lpthread -o poissonSolver.o
