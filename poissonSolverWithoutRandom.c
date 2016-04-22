@@ -5,11 +5,27 @@
 // - Initial Set up of MPI and data parsing.
 // - Setup the Maybe Function
 
+
+// --- TODO --- //
+// - input for axis limits [x0 x1 y0 y1]
+// - need forcing function, f, in
+//   U_xx + U_yy = f(x,y)
+// - initial guess needed
+// - input for type of algorithm
+// - maxIter should account for sub-iterations
+// - mapping function
+
 #include<stdio.h>
 #include<stdlib.h>
 #include<mpi.h>
 #include<pthread.h>
 #include<time.h>
+#include<math.h>
+
+// --- Type Defs --- //
+// grid containers
+typedef double** GRID;
+typedef double* SUBGRID;
 
 // --- Global Variables --- //
 // MPI
@@ -20,8 +36,16 @@ int nThreads; // Number of threads
 int threadSupport; // level of desired thread support
 
 // Grid
-int Nx, Ny; // Grid cells in x and y
+int Nx, Ny; // Global grid cells in x and y
+int M; // Local grid cells in box
 int N_matrix; // length of matrix
+int ia; // local index of i=0
+int ib; // local index of i=M
+int I, J; // indices
+double X0, X1, Y0, Y1; // axis limits
+double dx, dy; // grid spacing
+GRID Un; // solution at iteration
+GRID Unp1; // solution at next iteration
 
 // Solver
 int maxIter; // Maximum number of iterations before killing the program
@@ -29,6 +53,9 @@ int ngp; // Number of ghost cell layers to communicate
 
 // Flags
 int verboseFlag;
+
+// --- Function declarations --- //
+
 
 // --- Usage --- //
 // error handling
@@ -73,7 +100,6 @@ int inputHandler(int argc, char* argv[]) {
   verboseFlag = 0;
 
   // Incorrect number of input arguments
-  printf("%d",argc);
   if (argc == 7) {
     if (strcmp(argv[6],"-v") == 0) {
       verboseFlag = 1;
@@ -98,12 +124,22 @@ int inputHandler(int argc, char* argv[]) {
   if (*ptr != '\0' || Ny < 1) {
     return 2;
   }
+
+  // make sure number of processors
+  // divides number of elements,
+  // and the resulting square blocks
+  // divide the number of rows and columns
+  M = (int) sqrt(Nx*Ny/nProc);
+  if ((Nx*Ny-M*M*nProc != 0) || (Nx%M != 0) || (Ny%M != 0)) {
+    return 2;
+  }
   
   // Parse the number of iterations before death
   maxIter = strtol(argv[3], &ptr, 10); 
   if (*ptr != '\0' || maxIter < 1) {
     return 3;
   }
+  
   // Parse the number of ghost cell layers to communicate
   ngp = strtol(argv[4], &ptr, 10); 
   if (*ptr != '\0' || ngp < 1) {
@@ -115,6 +151,16 @@ int inputHandler(int argc, char* argv[]) {
   if (*ptr != '\0' || nThreads < 1) {
     return 4;
   }
+
+  // Axis limits
+  X0 = 0.;
+  X1 = 1.;
+  Y0 = 0.;
+  Y1 = 1.;
+
+  // Grid spacing
+  dx = (X1-X0)/(1.*Nx);
+  dy = (Y1-Y0)/(1.*Ny);
 
   // print thread support for verbose option
   if (myRank == 0) {
@@ -150,6 +196,55 @@ void initializeMPI(int argc, char* argv[]) {
   MPI_Comm_rank(network, &myRank);
 }
 
+// initialize Grid
+void initializeGrid() {
+
+  // calculate ia and ib
+  ia = ngp;
+  ib = M+ngp;
+
+  // first set of pointers
+  Unp1 = (GRID) malloc(sizeof(SUBGRID)*(M+1+2*ngp));
+  Un   = (GRID) malloc(sizeof(SUBGRID)*(M+1+2*ngp));
+
+  // second set of pointers
+  for (I = ia-ngp; I <= ib+ngp; ++I) {
+    Unp1[I] = (SUBGRID) malloc(sizeof(double)*(M+1+2*ngp));
+    Un[I]   = (SUBGRID) malloc(sizeof(double)*(M+1+2*ngp));
+
+    // initialize all cells
+    for (J = ia-ngp; J <= ib+ngp; ++J) {
+      Unp1[I][J] = 0.;
+      Un[I][J]   = 0.;
+    }
+  }
+}
+
+// Jacobi
+void jacobiStep() {
+  // Scheme is
+  // 1/dx^2 * (U_{i+1,j}^n - 2 U_{i,j}^{n+1} + U_{i-1,j}^n) + ...
+  // 1/dy^2 * (U_{i,j+1}^n - 2 U_{i,j}^{n+1} + U_{i,j-1}^n) = f_{i,j}
+
+  
+  double preMultiplier = (.5/(1./(dx*dx)+1./(dy*dy)));
+  for (I = ia-ngp+1; I <= ib+ngp-1; ++I) {
+    for (J = ia-ngp+1; J <= ib+ngp-1; ++J) {
+      Unp1[I][J] = preMultiplier*
+	( (1./(dx*dx))*(Un[I+1][J]+Un[I-1][J]) +
+	  (1./(dy*dy))*(Un[I][J+1]+Un[I][J-1]) );
+    }
+  }
+}
+
+void advanceGrid() {
+  for (I = ia-ngp+1; I <= ib+ngp-1; ++I) {
+    for (J = ia-ngp+1; J <= ib+ngp-1; ++J) {
+      Un[I][J] = Unp1[I][J];
+    }
+  }  
+}
+
 // --- Main --- //
 int main(int argc, char* argv[]) {
 
@@ -166,41 +261,39 @@ int main(int argc, char* argv[]) {
     return 0;
   }
   
-  // --- Matrix Initialization --- //
-  /* int nLayer = 0; */
-  /* int i,j; */
-  /* for(int i = 0; i < maxIter; ++i){ */
-  /*   for(int j = 0; j < nLayer; ++j){  */
-  /*     //caculation in each mpirank */
-  /*     //(jacobi/CG/..) */
-  /*   } */
+  // --- Grid Initialization --- //
+  initializeGrid();
 
-  /*   MPI_Barrier(network); */
+  // --- Iteration Loop --- //
+  int n, k; // TODO, better names for these vars
 
-  /*   // if(err < criterion) */
-  /*   //     break;   */
+  // perform iterations
+  for (n = 0; n < maxIter; ++n){
 
-  /*   //communication(send and recieve parallel ghost lines) */
+    // perform sub iterations for the amount of
+    // ghost points
+    for (k = 0; k < ngp; ++k) {
+      //(jacobi/CG/..)
+      // --- Jacobi --- //
+      jacobiStep();
+      
+      // --- Advance --- //
+      advanceGrid();
+    }
 
+    // 
+    MPI_Barrier(network);
 
-  /*   MPI_Barrier(network); */
+    // if(err < criterion)
+    //     break;
 
+    //communication(send and recieve parallel ghost lines)
 
-  /* } */
-    
-    
-    
-    
-    
-    
-    
-    
-    
+    MPI_Barrier(network);
+  }
     
   MPI_Finalize();
   return 0;
 }
 
-
-// --- Functions --- //
 
