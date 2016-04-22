@@ -1,2 +1,0 @@
-make:
-	mpicc poissonSolver.c clcg4.o -lpthread
