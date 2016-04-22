@@ -5,6 +5,9 @@
 // - Initial Set up of MPI and data parsing.
 // - Setup the Maybe Function
 
+// 4/22/16 DS
+// - implemented Jacobi, advance grid
+// - poissonProblemInputs.c
 
 // --- TODO --- //
 // - input for axis limits [x0 x1 y0 y1]
@@ -14,6 +17,7 @@
 // - input for type of algorithm
 // - maxIter should account for sub-iterations
 // - mapping function
+// - clean up the (1/dx)'s in the scheme
 
 #include<stdio.h>
 #include<stdlib.h>
@@ -37,15 +41,28 @@ int threadSupport; // level of desired thread support
 
 // Grid
 int Nx, Ny; // Global grid cells in x and y
+int Npx, Npy; // Number of processors in x and y dimensions
 int M; // Local grid cells in box
 int N_matrix; // length of matrix
+
 int ia; // local index of i=0
 int ib; // local index of i=M
 int I, J; // indices
-double X0, X1, Y0, Y1; // axis limits
-double dx, dy; // grid spacing
+
+// Note: y0 and y1 are taken due to some internal c reason
+double x0_, x1_, y0_, y1_; // local axis limits
+double X0_, X1_, Y0_, Y1_; // global axis limits
+double dx, dy; // local grid spacing
+double dX, dY; // global grid spacing
+
 GRID Un; // solution at iteration
 GRID Unp1; // solution at next iteration
+GRID F; // forcing function
+// boundary conditions
+SUBGRID LBC;
+SUBGRID RBC;
+SUBGRID BBC;
+SUBGRID TBC;
 
 // Solver
 int maxIter; // Maximum number of iterations before killing the program
@@ -152,15 +169,28 @@ int inputHandler(int argc, char* argv[]) {
     return 4;
   }
 
-  // Axis limits
-  X0 = 0.;
-  X1 = 1.;
-  Y0 = 0.;
-  Y1 = 1.;
+  // processors in each dimension
+  Npx = Nx/M;
+  Npy = Ny/M;
+
+  // Global Axis limits
+  // todo, define this in inputs
+  X0_ = 0.;
+  X1_ = 1.;
+  Y0_ = 0.;
+  Y1_ = 1.;
 
   // Grid spacing
-  dx = (X1-X0)/(1.*Nx);
-  dy = (Y1-Y0)/(1.*Ny);
+  dx = (X1_-X0_)/(1.*Nx);
+  dy = (Y1_-Y0_)/(1.*Ny);
+  dX = (X1_-X0_)/(1.*Npx);
+  dY = (Y1_-Y0_)/(1.*Npy);
+
+  // Local Axis limits
+  x0_ = X0_ + dX*(myRank%Npx);
+  y0_ = Y0_ + dY*(myRank/Npx);
+  x1_ = x0_ + dX;
+  y1_ = y0_ + dY;
 
   // print thread support for verbose option
   if (myRank == 0) {
@@ -203,19 +233,34 @@ void initializeGrid() {
   ia = ngp;
   ib = M+ngp;
 
-  // first set of pointers
+  // 2D grid for solution
   Unp1 = (GRID) malloc(sizeof(SUBGRID)*(M+1+2*ngp));
   Un   = (GRID) malloc(sizeof(SUBGRID)*(M+1+2*ngp));
+  // 2D grid for forcing function
+  F    = (GRID) malloc(sizeof(SUBGRID)*(M+1+2*ngp));
 
-  // second set of pointers
+  // 1D grid for boundaries
+  LBC = (SUBGRID) malloc(sizeof(double)*(M+1+2*ngp));
+  RBC = (SUBGRID) malloc(sizeof(double)*(M+1+2*ngp));
+  BBC = (SUBGRID) malloc(sizeof(double)*(M+1+2*ngp));
+  TBC = (SUBGRID) malloc(sizeof(double)*(M+1+2*ngp));
+
+  // Allocate 
   for (I = ia-ngp; I <= ib+ngp; ++I) {
     Unp1[I] = (SUBGRID) malloc(sizeof(double)*(M+1+2*ngp));
     Un[I]   = (SUBGRID) malloc(sizeof(double)*(M+1+2*ngp));
+    F[I]    = (SUBGRID) malloc(sizeof(double)*(M+1+2*ngp));
+
+    LBC[I]  = 0.;
+    RBC[I]  = 0.;
+    BBC[I]  = 0.;
+    TBC[I]  = 0.;
 
     // initialize all cells
     for (J = ia-ngp; J <= ib+ngp; ++J) {
       Unp1[I][J] = 0.;
       Un[I][J]   = 0.;
+      F[I][J]    = 0.;
     }
   }
 }
@@ -232,14 +277,17 @@ void jacobiStep() {
     for (J = ia-ngp+1; J <= ib+ngp-1; ++J) {
       Unp1[I][J] = preMultiplier*
 	( (1./(dx*dx))*(Un[I+1][J]+Un[I-1][J]) +
-	  (1./(dy*dy))*(Un[I][J+1]+Un[I][J-1]) );
+	  (1./(dy*dy))*(Un[I][J+1]+Un[I][J-1]) -
+	  F[I][J] );
     }
   }
 }
 
 void advanceGrid() {
-  for (I = ia-ngp+1; I <= ib+ngp-1; ++I) {
-    for (J = ia-ngp+1; J <= ib+ngp-1; ++J) {
+  // Copy grid Unp1 to Un
+  // Todo, copy everything?
+  for (I = ia-ngp; I <= ib+ngp; ++I) {
+    for (J = ia-ngp; J <= ib+ngp; ++J) {
       Un[I][J] = Unp1[I][J];
     }
   }  
@@ -263,6 +311,8 @@ int main(int argc, char* argv[]) {
   
   // --- Grid Initialization --- //
   initializeGrid();
+
+  inputFlag = initializeProblemInputs("constant",Un);
 
   // --- Iteration Loop --- //
   int n, k; // TODO, better names for these vars
