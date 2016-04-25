@@ -105,8 +105,10 @@ int initializeProblemInputs(char* casename) {
   }
 
   // BCs (left and right)
+  // todo, replace with ja and jb
   for (J = ia-ngp; J <= ib+ngp; ++J) {
     y = y0_ + dy*(J-ia);
+    // TODO, got a seg fault here
     /* LBC[2] = lbc(y); */
     /* LBC[2] = 1.; */
     /* RBC[2] = rbc(y); */
