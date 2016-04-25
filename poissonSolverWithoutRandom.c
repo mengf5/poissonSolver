@@ -9,6 +9,9 @@
 // - implemented Jacobi, advance grid
 // - poissonProblemInputs.c
 
+// 4/24/16 ER
+// - Removed the need for extern in poissonProblemInputs.c. See READ_ME.txt
+
 // --- TODO --- //
 // - input for axis limits [x0 x1 y0 y1]
 // - need forcing function, f, in
@@ -25,6 +28,7 @@
 #include<pthread.h>
 #include<time.h>
 #include<math.h>
+#include<string.h>
 
 // --- Type Defs --- //
 // grid containers
@@ -220,7 +224,13 @@ int inputHandler(int argc, char* argv[]) {
 
 // initialize MPI
 void initializeMPI(int argc, char* argv[]) {
-  MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &threadSupport);
+    int request = MPI_THREAD_MULTIPLE;
+  MPI_Init_thread(&argc, &argv, request, &threadSupport);
+    if (request != threadSupport) {
+        if (myRank == 0) {
+            printf("You requested level %d support but only have level %d support.\n", request, threadSupport);
+        }
+    }
   network = MPI_COMM_WORLD;
   MPI_Comm_size(network, &nProc);
   MPI_Comm_rank(network, &myRank);
@@ -293,11 +303,17 @@ void advanceGrid() {
   }  
 }
 
+
+// --- External Functions --- //
+int initializeProblemInputs(char* casename);
+
+
+
 // --- Main --- //
 int main(int argc, char* argv[]) {
 
   // --- MPI Initialization --- //
-  initializeMPI(argc,argv);
+  initializeMPI(argc, argv);
   
   // --- Parse input --- //
   int inputFlag = inputHandler(argc,argv);
@@ -312,7 +328,8 @@ int main(int argc, char* argv[]) {
   // --- Grid Initialization --- //
   initializeGrid();
 
-  inputFlag = initializeProblemInputs("constant",Un);
+    char test[4] = "test";
+  inputFlag = initializeProblemInputs(test);
 
   // --- Iteration Loop --- //
   int n, k; // TODO, better names for these vars
