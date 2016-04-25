@@ -46,6 +46,7 @@ int threadSupport; // level of desired thread support
 // Grid
 int Nx, Ny; // Global grid cells in x and y
 int Npx, Npy; // Number of processors in x and y dimensions
+// TODO, change to Mx and My for rectangular breakdown
 int M; // Local grid cells in box
 int N_matrix; // length of matrix
 
@@ -151,6 +152,10 @@ int inputHandler(int argc, char* argv[]) {
   // and the resulting square blocks
   // divide the number of rows and columns
   M = (int) sqrt(Nx*Ny/nProc);
+  // Todo:
+  // Mx = Nx
+  // My = Ny/nProc
+  // make sure this error check works for our situation
   if ((Nx*Ny-M*M*nProc != 0) || (Nx%M != 0) || (Ny%M != 0)) {
     return 2;
   }
@@ -176,9 +181,12 @@ int inputHandler(int argc, char* argv[]) {
   // processors in each dimension
   Npx = Nx/M;
   Npy = Ny/M;
+  // TODO, new case
+  // Npx = 1;
+  // Npy = nProc;
 
   // Global Axis limits
-  // todo, define this in inputs
+  // todo, define in input file
   X0_ = 0.;
   X1_ = 1.;
   Y0_ = 0.;
@@ -193,6 +201,10 @@ int inputHandler(int argc, char* argv[]) {
   // Local Axis limits
   x0_ = X0_ + dX*(myRank%Npx);
   y0_ = Y0_ + dY*(myRank/Npx);
+  // TODO
+  // x0_ = X0;
+  // y0_ = Y0_ + dY*(myRank/nProc);
+
   x1_ = x0_ + dX;
   y1_ = y0_ + dY;
 
@@ -242,6 +254,8 @@ void initializeGrid() {
   // calculate ia and ib
   ia = ngp;
   ib = M+ngp;
+  // todo, define ja and jb
+  // todo, be wary of sizes of all arrays
 
   // 2D grid for solution
   Unp1 = (GRID) malloc(sizeof(SUBGRID)*(M+1+2*ngp));
@@ -281,8 +295,9 @@ void jacobiStep() {
   // 1/dx^2 * (U_{i+1,j}^n - 2 U_{i,j}^{n+1} + U_{i-1,j}^n) + ...
   // 1/dy^2 * (U_{i,j+1}^n - 2 U_{i,j}^{n+1} + U_{i,j-1}^n) = f_{i,j}
 
-  
+  // Todo, make it look nicer  
   double preMultiplier = (.5/(1./(dx*dx)+1./(dy*dy)));
+  // Todo, change to ja and jb
   for (I = ia-ngp+1; I <= ib+ngp-1; ++I) {
     for (J = ia-ngp+1; J <= ib+ngp-1; ++J) {
       Unp1[I][J] = preMultiplier*
@@ -328,7 +343,7 @@ int main(int argc, char* argv[]) {
   // --- Grid Initialization --- //
   initializeGrid();
 
-    char test[4] = "test";
+  char test[4] = "test";
   inputFlag = initializeProblemInputs(test);
 
   // --- Iteration Loop --- //
@@ -343,14 +358,22 @@ int main(int argc, char* argv[]) {
       //(jacobi/CG/..)
       // --- Jacobi --- //
       jacobiStep();
+
+      // --- Update BCs --- //
+      // TODO
       
       // --- Advance --- //
       advanceGrid();
+
     }
 
-    // 
+    // todo figure this out
     MPI_Barrier(network);
 
+    // --- Communication --- //
+    // TODO, do this
+
+    // todo implement this
     // if(err < criterion)
     //     break;
 
