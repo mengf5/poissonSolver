@@ -7,37 +7,38 @@
 typedef double** GRID;
 typedef double* SUBGRID;
 
+
 // --- globals --- //
 // MPI
-extern int nProc; // Number of processors
-extern int myRank; // My rank
-extern int nThreads; // Number of threads
+int nProc; // Number of processors
+int myRank; // My rank
+int nThreads; // Number of threads
 
 // Grid
-extern int Npx, Npy; // Number of processors in x and y dimensions
-extern int ia; // local index of i=0
-extern int ib; // local index of i=M
+int Npx, Npy; // Number of processors in x and y dimensions
+int ia; // local index of i=0
+int ib; // local index of i=M
 
-extern double x0_, x1_, y0_, y1_; // local axis limits
-extern double X0_, X1_, Y0_, Y1_; // global axis limits
-extern double dx, dy; // local grid spacing
-extern double dX, dY; // global grid spacing
+double x0_, x1_, y0_, y1_; // local axis limits
+double X0_, X1_, Y0_, Y1_; // global axis limits
+double dx, dy; // local grid spacing
+double dX, dY; // global grid spacing
 
-extern GRID F; // forcing function
+GRID F; // forcing function
 // boundary conditions
-extern SUBGRID LBC;
-extern SUBGRID RBC;
-extern SUBGRID BBC;
-extern SUBGRID TBC;
+SUBGRID LBC;
+SUBGRID RBC;
+SUBGRID BBC;
+SUBGRID TBC;
 
 // indices
 int I, J; 
 
 // Solver
-extern int ngp; // Number of ghost cell layers to communicate
+int ngp; // Number of ghost cell layers to communicate
 
 // Flags
-extern int verboseFlag;
+int verboseFlag;
 
 // --- Function Decs --- //
 // forcing used in L u = f
@@ -50,10 +51,11 @@ double tbc(double x);
 
 
 // --- Main Implementation --- //
-int initializeProblemInputs(char* casename[], 
+/*int initializeProblemInputs(char* casename, 
 			    GRID F, 
 			    SUBGRID LBC, SUBGRID RBC,
-			    SUBGRID BBC, SUBGRID TBC) {
+			    SUBGRID BBC, SUBGRID TBC) {*/
+int initializeProblemInputs(char* casename) {
   // Choose the correct problem inputs based on the casename
   // and fill in forcing function grid, boundary conditions
 
