@@ -45,22 +45,55 @@ int verboseFlag;
 
 // --- Function Decs --- //
 // forcing used in L u = f
-double forcingFunction(double x, double y);
+double forcingFunction(double x, double y, int caseNumber);
 // left, right, bottom, and top boundary conditions
-double lbc(double y);
-double rbc(double y);
-double bbc(double x);
-double tbc(double x);
+double lbc(double y, int caseNumber);
+double rbc(double y, int caseNumber);
+double bbc(double x, int caseNumber);
+double tbc(double x, int caseNumber);
 
-double forcingFunction(double x, double y) {
-    return 0.;
-  }
+double forcingFunction(double x, double y, int caseNumber) {
+  if( caseNumber == 0) {
+    return 0.;}
+  else if( caseNumber == 1){
+    return 1.;}
+}  
+  
+
+double lbc(double y, int caseNumber) {
+  if( caseNumber == 0) {
+    return 0.;}
+  else if( caseNumber == 1){
+    return 1.;}
+}
+
+double rbc(double y, int caseNumber) {
+  if( caseNumber == 0) {
+    return 0.;}
+  else if( caseNumber == 1){
+    return 1.;}
+}
+
+double tbc(double y, int caseNumber) {
+  if( caseNumber == 0) {
+    return 0.;}
+  else if( caseNumber == 1){
+    return 1.;}
+}
+
+double bbc(double y, int caseNumber) {
+  if( caseNumber == 0) {
+    return 0.;}
+  else if( caseNumber == 1){
+    return 1.;}
+}
+
 // --- Main Implementation --- //
 /*int initializeProblemInputs(char* casename, 
 			    GRID F, 
 			    SUBGRID LBC, SUBGRID RBC,
 			    SUBGRID BBC, SUBGRID TBC) {*/
-int initializeProblemInputs(char* casename) {
+int initializeProblemInputs(int caseNumber) {
   // Choose the correct problem inputs based on the casename
   // and fill in forcing function grid, boundary conditions
 
@@ -94,22 +127,16 @@ int initializeProblemInputs(char* casename) {
   /*   return 1; */
   /* } */
   
-
-  char constant[] = "constant";
-  char other[] = "otherShit";
-  if( !strcmp( casename, constant ))
-    printf("can we do any better than this \n");
-  else if( !strcmp( casename, other ))
-    {
-      printf("doesnot work! go back to constant! \n");
-    }
   
-
-
-
-
-
+  if( caseNumber == 0) {
+    printf("can we do any better than this \n");
+  }
+  else if( caseNumber == 1){
+    printf("doesnot work! go back to constant! \n");
     
+  }  
+
+  
   // --- Fill In Grids --- //
   // Forcing function      
   double x, y;
@@ -121,26 +148,24 @@ int initializeProblemInputs(char* casename) {
       x = x0_ + dx*(I-ia);
       y = y0_ + dy*(J-ja);
 
-      F[I][J] = forcingFunction(x,y);
+      F[I][J] = forcingFunction(x,y,caseNumber);
     }
   }
 
   // BCs (left and right)
-  // todo, replace with ja and jb
-  for (J = ia-ngp; J <= ib+ngp; ++J) {
-    y = y0_ + dy*(J-ia);
+  for (J = ja-ngp; J <= jb+ngp; ++J) {
+    y = y0_ + dy*(J-ja);
     // TODO, got a seg fault here
-    /* LBC[2] = lbc(y); */
-    /* LBC[2] = 1.; */
-    /* RBC[2] = rbc(y); */
+    LBC[J] = lbc(y,caseNumber);
+    RBC[J] = rbc(y,caseNumber);
   }
 
   // BCs (bottom and top)
-  /* for (I = ia-ngp; I <= ib+ngp; ++I) { */
-  /*   x = x0_ + dx*(I-ia); */
-  /*   BBC[I] = bbc(x); */
-  /*   TBC[I] = tbc(x); */
-  /* } */
+  for (I = ia-ngp; I <= ib+ngp; ++I) {
+    x = x0_ + dx*(I-ia);
+    BBC[I] = bbc(x,caseNumber);
+    TBC[I] = tbc(x,caseNumber);
+  }
 
   return 0;
 }

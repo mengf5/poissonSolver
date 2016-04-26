@@ -24,11 +24,11 @@
 
 
 //4/26/16 FM
-// - add sttcmp to poissonProblemInputs
 // - confirmed y0 is not usable due to some wired internal function
 // - couldnot figure out inline so I define forcingFunction before initilizationProblemInputs function 
 // - change MPI_THREAD_MULTIPLE to MPI_THREAD_FUNNELED, do yours works with mutiple?
 // - change ia,ib and add ja,jb
+// - change forcingFunction and (b,t,l,r)bc 
 
 
 #include<stdio.h>
@@ -351,7 +351,7 @@ void advanceGrid() {
 
 
 // --- External Functions --- //
-int initializeProblemInputs(char* casename);
+int initializeProblemInputs(int caseNumber );
 
 
 
@@ -371,13 +371,13 @@ int main(int argc, char* argv[]) {
     return 0;
   }
 
-  printf("done MPI initilization \n");
+  printf("done MPI initialization \n");
   
   // --- Grid Initialization --- //
   initializeGrid();
-  printf("done Grid initilization \n");
+  printf("done Grid initialization \n");
 
-  char test[] = "constant";
+  int test = 0;
   inputFlag = initializeProblemInputs(test);
 
   // --- Iteration Loop --- //
