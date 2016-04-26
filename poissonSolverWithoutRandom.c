@@ -22,6 +22,15 @@
 // - mapping function
 // - clean up the (1/dx)'s in the scheme
 
+
+//4/26/16 FM
+// - add sttcmp to poissonProblemInputs
+// - confirmed y0 is not usable due to some wired internal function
+// - couldnot figure out inline so I define forcingFunction before initilizationProblemInputs function 
+// - change MPI_THREAD_MULTIPLE to MPI_THREAD_FUNNELED, do yours works with mutiple?
+// - change ia,ib and add ja,jb
+
+
 #include<stdio.h>
 #include<stdlib.h>
 #include<mpi.h>
@@ -42,16 +51,18 @@ int nProc; // Number of processors
 int myRank; // My rank
 int nThreads; // Number of threads
 int threadSupport; // level of desired thread support
+int partition = 1;// partition scheme, 1 for square 2 for slender rect. // for now 1 is not available. 
 
 // Grid
 int Nx, Ny; // Global grid cells in x and y
 int Npx, Npy; // Number of processors in x and y dimensions
 // TODO, change to Mx and My for rectangular breakdown
 int M; // Local grid cells in box
+int Mx, My; // Local grid cells in rect. in x and y 
 int N_matrix; // length of matrix
 
-int ia; // local index of i=0
-int ib; // local index of i=M
+int ia,ib; // local index of i=0 to i=Mx
+int ja,jb; // local index of j=0 to j=My
 int I, J; // indices
 
 // Note: y0 and y1 are taken due to some internal c reason
@@ -151,14 +162,18 @@ int inputHandler(int argc, char* argv[]) {
   // divides number of elements,
   // and the resulting square blocks
   // divide the number of rows and columns
-  M = (int) sqrt(Nx*Ny/nProc);
-  // Todo:
-  // Mx = Nx
-  // My = Ny/nProc
-  // make sure this error check works for our situation
-  if ((Nx*Ny-M*M*nProc != 0) || (Nx%M != 0) || (Ny%M != 0)) {
-    return 2;
+  if (partition == 1){
+    M = (int) sqrt(Nx*Ny/nProc);}
+  else if(partition == 2){
+    Mx = Nx;
+    My = Ny/nProc;
   }
+
+  // todo change this check
+  // make sure this error check works for our situation
+  /* if ((Nx*Ny-M*M*nProc != 0) || (Nx%M != 0) || (Ny%M != 0)) { */
+  /*   return 2; */
+  /* } */
   
   // Parse the number of iterations before death
   maxIter = strtol(argv[3], &ptr, 10); 
@@ -179,12 +194,14 @@ int inputHandler(int argc, char* argv[]) {
   }
 
   // processors in each dimension
-  Npx = Nx/M;
-  Npy = Ny/M;
-  // TODO, new case
-  // Npx = 1;
-  // Npy = nProc;
+  if (partition == 1){
+    Npx = Nx/M;
+    Npy = Ny/M;}
+  else if (partition == 2){
+    Npx = 1;
+    Npy = nProc;}
 
+  //Let keep it this way assuming we nondimensionalize every problem to unit square
   // Global Axis limits
   // todo, define in input file
   X0_ = 0.;
@@ -199,12 +216,14 @@ int inputHandler(int argc, char* argv[]) {
   dY = (Y1_-Y0_)/(1.*Npy);
 
   // Local Axis limits
-  x0_ = X0_ + dX*(myRank%Npx);
-  y0_ = Y0_ + dY*(myRank/Npx);
-  // TODO
-  // x0_ = X0;
-  // y0_ = Y0_ + dY*(myRank/nProc);
-
+  if (partition == 1){
+    x0_ = X0_ + dX*(myRank%Npx);
+    y0_ = Y0_ + dY*(myRank%Npx);}
+  else if (partition == 1){
+    x0_ = X0_;
+    y0_ = Y0_ + dY*(myRank%nProc);
+  }
+  
   x1_ = x0_ + dX;
   y1_ = y0_ + dY;
 
@@ -236,8 +255,10 @@ int inputHandler(int argc, char* argv[]) {
 
 // initialize MPI
 void initializeMPI(int argc, char* argv[]) {
-    int request = MPI_THREAD_MULTIPLE;
-  MPI_Init_thread(&argc, &argv, request, &threadSupport);
+  //    int request = MPI_THREAD_MULTIPLE;
+  // does yours support the multiple? 
+    int request = MPI_THREAD_FUNNELED;
+    MPI_Init_thread(&argc, &argv, request, &threadSupport);
     if (request != threadSupport) {
         if (myRank == 0) {
             printf("You requested level %d support but only have level %d support.\n", request, threadSupport);
@@ -252,11 +273,21 @@ void initializeMPI(int argc, char* argv[]) {
 void initializeGrid() {
 
   // calculate ia and ib
-  ia = ngp;
-  ib = M+ngp;
-  // todo, define ja and jb
-  // todo, be wary of sizes of all arrays
+  if (partition == 1){
+    ia = ngp;
+    ib = M+ngp;
+    ja = ngp;
+    jb = M+ngp;
+  }
+  else if (partition == 2){
+    ia = ngp;
+    ib = Mx+ngp;
+    ja = ngp;
+    jb = My+ngp;
+  }
+  
 
+  // todo, be wary of sizes of all arrays
   // 2D grid for solution
   Unp1 = (GRID) malloc(sizeof(SUBGRID)*(M+1+2*ngp));
   Un   = (GRID) malloc(sizeof(SUBGRID)*(M+1+2*ngp));
@@ -281,7 +312,7 @@ void initializeGrid() {
     TBC[I]  = 0.;
 
     // initialize all cells
-    for (J = ia-ngp; J <= ib+ngp; ++J) {
+    for (J = ja-ngp; J <= jb+ngp; ++J) {
       Unp1[I][J] = 0.;
       Un[I][J]   = 0.;
       F[I][J]    = 0.;
@@ -299,7 +330,7 @@ void jacobiStep() {
   double preMultiplier = (.5/(1./(dx*dx)+1./(dy*dy)));
   // Todo, change to ja and jb
   for (I = ia-ngp+1; I <= ib+ngp-1; ++I) {
-    for (J = ia-ngp+1; J <= ib+ngp-1; ++J) {
+    for (J = ja-ngp+1; J <= jb+ngp-1; ++J) {
       Unp1[I][J] = preMultiplier*
 	( (1./(dx*dx))*(Un[I+1][J]+Un[I-1][J]) +
 	  (1./(dy*dy))*(Un[I][J+1]+Un[I][J-1]) -
@@ -312,7 +343,7 @@ void advanceGrid() {
   // Copy grid Unp1 to Un
   // Todo, copy everything?
   for (I = ia-ngp; I <= ib+ngp; ++I) {
-    for (J = ia-ngp; J <= ib+ngp; ++J) {
+    for (J = ja-ngp; J <= jb+ngp; ++J) {
       Un[I][J] = Unp1[I][J];
     }
   }  
@@ -339,11 +370,14 @@ int main(int argc, char* argv[]) {
     MPI_Finalize();
     return 0;
   }
+
+  printf("done MPI initilization \n");
   
   // --- Grid Initialization --- //
   initializeGrid();
+  printf("done Grid initilization \n");
 
-  char test[4] = "test";
+  char test[] = "constant";
   inputFlag = initializeProblemInputs(test);
 
   // --- Iteration Loop --- //

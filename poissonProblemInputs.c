@@ -3,6 +3,8 @@
 // - 
 
 #include<math.h>
+#include<string.h>
+#include<stdio.h>
 
 typedef double** GRID;
 typedef double* SUBGRID;
@@ -16,8 +18,9 @@ int nThreads; // Number of threads
 
 // Grid
 int Npx, Npy; // Number of processors in x and y dimensions
-int ia; // local index of i=0
-int ib; // local index of i=M
+int ia,ib; // local index of i=0 to i=Mx
+int ja,jb; // local index of j=0 to j=My
+
 
 double x0_, x1_, y0_, y1_; // local axis limits
 double X0_, X1_, Y0_, Y1_; // global axis limits
@@ -49,7 +52,9 @@ double rbc(double y);
 double bbc(double x);
 double tbc(double x);
 
-
+double forcingFunction(double x, double y) {
+    return 0.;
+  }
 // --- Main Implementation --- //
 /*int initializeProblemInputs(char* casename, 
 			    GRID F, 
@@ -59,7 +64,7 @@ int initializeProblemInputs(char* casename) {
   // Choose the correct problem inputs based on the casename
   // and fill in forcing function grid, boundary conditions
 
-  /*  inline double forcingFunction(double x, double y) { */
+  /* inline double forcingFunction(double x, double y) { */
   /*   return 0.; */
   /* } */
 
@@ -67,39 +72,55 @@ int initializeProblemInputs(char* casename) {
   /* if (strcmp(casename,"constant") == 0) { */
     // --- Constant Solution --- //
     // solution is u(x,y) = 1.
-    inline double forcingFunction(double x, double y) {
-      return 0.;
-    }
-    inline double lbc(double y) {
-      return 1.;
-    }
-    inline double rbc(double y) {
-      return 1.;
-    }
-    inline double bbc(double y) {
-      return 1.;
-    }
-    inline double tbc(double y) {
-      return 1.;
-    }
-
+  /* inline double forcingFunction(double x, double y) { */
+  /*   return 0.; */
+  /* } */
+  /* inline double lbc(double y) { */
+  /*   return 1.; */
+  /* } */
+  /* inline double rbc(double y) { */
+  /*   return 1.; */
+  /* } */
+  /* inline double bbc(double y) { */
+  /*   return 1.; */
+  /* } */
+  /* inline double tbc(double y) { */
+  /*   return 1.; */
+  /* } */
+  
   /* } else { */
-    // --- Invalid Casename --- //
-    // casename does not match any preset
+  // --- Invalid Casename --- //
+  // casename does not match any preset
   /*   return 1; */
   /* } */
+  
 
+  char constant[] = "constant";
+  char other[] = "otherShit";
+  if( !strcmp( casename, constant ))
+    printf("can we do any better than this \n");
+  else if( !strcmp( casename, other ))
+    {
+      printf("doesnot work! go back to constant! \n");
+    }
+  
+
+
+
+
+
+    
   // --- Fill In Grids --- //
   // Forcing function      
   double x, y;
   for (I = ia-ngp; I <= ib+ngp; ++I) {
-    for (J = ia-ngp; J <= ib+ngp; ++J) {
+    for (J = ja-ngp; J <= jb+ngp; ++J) {
       // Find x and y, note that I and J are c 
       // indices that start at 0. Offset them by ia
       // to find the math index
       x = x0_ + dx*(I-ia);
-      y = y0_ + dy*(J-ia);
-      
+      y = y0_ + dy*(J-ja);
+
       F[I][J] = forcingFunction(x,y);
     }
   }
