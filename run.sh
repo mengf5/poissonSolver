@@ -3,7 +3,7 @@
 nProc=1
 Nx=8
 Ny=8
-maxIter=1
+maxIter=100
 nThreads=1
 ngp=1
 
