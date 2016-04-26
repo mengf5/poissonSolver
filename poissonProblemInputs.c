@@ -42,100 +42,66 @@ int ngp; // Number of ghost cell layers to communicate
 
 // Flags
 int verboseFlag;
+char* verboseTag;
+
 
 // --- Function Decs --- //
 // forcing used in L u = f
-double forcingFunction(double x, double y, int caseNumber);
-// left, right, bottom, and top boundary conditions
-double lbc(double y, int caseNumber);
-double rbc(double y, int caseNumber);
-double bbc(double x, int caseNumber);
-double tbc(double x, int caseNumber);
-
 double forcingFunction(double x, double y, int caseNumber) {
   if( caseNumber == 0) {
-    return 0.;}
-  else if( caseNumber == 1){
-    return 1.;}
+    return 0.;
+  } else if( caseNumber == 1) {
+    return 1.;
+  }
 }  
   
-
+// left, right, bottom, and top boundary conditions
 double lbc(double y, int caseNumber) {
   if( caseNumber == 0) {
-    return 0.;}
-  else if( caseNumber == 1){
-    return 1.;}
+    return 1.;
+  } else if( caseNumber == 1) {
+    return 1.;
+  }
 }
 
 double rbc(double y, int caseNumber) {
   if( caseNumber == 0) {
-    return 0.;}
-  else if( caseNumber == 1){
-    return 1.;}
+    return 1.;
+  } else if( caseNumber == 1) {
+    return 1.;
+  }
 }
 
 double tbc(double y, int caseNumber) {
   if( caseNumber == 0) {
-    return 0.;}
-  else if( caseNumber == 1){
-    return 1.;}
+    return 1.;
+  } else if( caseNumber == 1) {
+    return 1.;
+  }
 }
 
 double bbc(double y, int caseNumber) {
   if( caseNumber == 0) {
-    return 0.;}
-  else if( caseNumber == 1){
-    return 1.;}
+    return 1.;
+  } else if( caseNumber == 1) {
+    return 1.;
+  }
 }
 
 // --- Main Implementation --- //
-/*int initializeProblemInputs(char* casename, 
-			    GRID F, 
-			    SUBGRID LBC, SUBGRID RBC,
-			    SUBGRID BBC, SUBGRID TBC) {*/
 int initializeProblemInputs(int caseNumber) {
   // Choose the correct problem inputs based on the casename
   // and fill in forcing function grid, boundary conditions
 
-  /* inline double forcingFunction(double x, double y) { */
-  /*   return 0.; */
-  /* } */
-
-  // --- Declare Inlines --- //
-  /* if (strcmp(casename,"constant") == 0) { */
-    // --- Constant Solution --- //
-    // solution is u(x,y) = 1.
-  /* inline double forcingFunction(double x, double y) { */
-  /*   return 0.; */
-  /* } */
-  /* inline double lbc(double y) { */
-  /*   return 1.; */
-  /* } */
-  /* inline double rbc(double y) { */
-  /*   return 1.; */
-  /* } */
-  /* inline double bbc(double y) { */
-  /*   return 1.; */
-  /* } */
-  /* inline double tbc(double y) { */
-  /*   return 1.; */
-  /* } */
-  
-  /* } else { */
-  // --- Invalid Casename --- //
-  // casename does not match any preset
-  /*   return 1; */
-  /* } */
-  
-  
-  if( caseNumber == 0) {
-    printf("can we do any better than this \n");
+  if (verboseFlag) {
+    printf("%s ",verboseTag);
+    if( caseNumber == 0) {
+      printf("casename: constant \n");
+    }
+    else {
+      return 1;
+    }  
   }
-  else if( caseNumber == 1){
-    printf("doesnot work! go back to constant! \n");
-    
-  }  
-
   
   // --- Fill In Grids --- //
   // Forcing function      
@@ -155,7 +121,6 @@ int initializeProblemInputs(int caseNumber) {
   // BCs (left and right)
   for (J = ja-ngp; J <= jb+ngp; ++J) {
     y = y0_ + dy*(J-ja);
-    // TODO, got a seg fault here
     LBC[J] = lbc(y,caseNumber);
     RBC[J] = rbc(y,caseNumber);
   }

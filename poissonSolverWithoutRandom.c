@@ -12,24 +12,26 @@
 // 4/24/16 ER
 // - Removed the need for extern in poissonProblemInputs.c. See READ_ME.txt
 
-// --- TODO --- //
-// - input for axis limits [x0 x1 y0 y1]
-// - need forcing function, f, in
-//   U_xx + U_yy = f(x,y)
-// - initial guess needed
-// - input for type of algorithm
-// - maxIter should account for sub-iterations
-// - mapping function
-// - clean up the (1/dx)'s in the scheme
-
-
-//4/26/16 FM
+// 4/26/16 FM
 // - confirmed y0 is not usable due to some wired internal function
 // - couldnot figure out inline so I define forcingFunction before initilizationProblemInputs function 
 // - change MPI_THREAD_MULTIPLE to MPI_THREAD_FUNNELED, do yours works with mutiple?
 // - change ia,ib and add ja,jb
 // - change forcingFunction and (b,t,l,r)bc 
 
+// 4/26/16 DS
+// - implemented applyBCs()
+// - implemented residual error check
+// - ran test with 1 rank, it converges!
+
+// --- TODO --- //
+// - initial guess needed
+// - maxIter should account for sub-iterations
+// - clean up the (1/dx)'s in the scheme
+// - more testing but not constant solution
+// - input tolerance as optional parameter?
+// - communication
+// - threads
 
 #include<stdio.h>
 #include<stdlib.h>
@@ -56,7 +58,6 @@ int partition = 1;// partition scheme, 1 for square 2 for slender rect. // for n
 // Grid
 int Nx, Ny; // Global grid cells in x and y
 int Npx, Npy; // Number of processors in x and y dimensions
-// TODO, change to Mx and My for rectangular breakdown
 int M; // Local grid cells in box
 int Mx, My; // Local grid cells in rect. in x and y 
 int N_matrix; // length of matrix
@@ -83,9 +84,12 @@ SUBGRID TBC;
 // Solver
 int maxIter; // Maximum number of iterations before killing the program
 int ngp; // Number of ghost cell layers to communicate
+double tol = 1.e-06;
 
 // Flags
 int verboseFlag;
+char* verboseTag;
+int printFrequency=10; // print iteration status every 10 iterations
 
 // --- Function declarations --- //
 
@@ -120,6 +124,9 @@ void usage(char* name, int error) {
     printf("   Unable to parse the number of ghost layers.\n");
     printf("   The number of ghost layers should be a positive integer.\n");
     break;
+  case 6:
+    printf("   Invalid casename selected.\n");
+    break;
   default:
     printf("   It is literally impossible to get here in the program.\n");
     printf("   This must be the work of the divine Maybe function!\n");
@@ -135,9 +142,10 @@ int inputHandler(int argc, char* argv[]) {
   // Incorrect number of input arguments
   if (argc == 7) {
     if (strcmp(argv[6],"-v") == 0) {
-      verboseFlag = 1;
       if (myRank == 0) {
-	printf("%s: Verbose output enabled \n",argv[0]);
+	verboseFlag = 1;
+	verboseTag = "v>>";
+	printf("%s Verbose output enabled \n",verboseTag);
       }
     } else {
       return 1;
@@ -230,6 +238,7 @@ int inputHandler(int argc, char* argv[]) {
   // print thread support for verbose option
   if (myRank == 0) {
     if (verboseFlag) {
+      printf("%s ",verboseTag);
       switch(threadSupport) {
       case 0:
 	printf("Only one thread will execute.\n");
@@ -349,6 +358,61 @@ void advanceGrid() {
   }  
 }
 
+void updateBCs() {
+  // Update boundary cells if applicable
+
+  // left is a boundary
+  if (x0_ == X0_) {
+    I = ia;
+    for (J = ja-ngp; J <= jb+ngp; ++J) {
+      Unp1[I][J] = LBC[J];
+    }
+  }
+  // bottom is a boundary
+  if (y0_ == Y0_) {
+    J = ja;
+    for (I = ia-ngp; J <= ib+ngp; ++J) {
+      Unp1[I][J] = BBC[J];
+    }    
+  }
+  // right is a boundary
+  if (x1_ == X1_) {
+    I = ib;
+    for (J = ja-ngp; J <= jb+ngp; ++J) {
+      Unp1[I][J] = RBC[J];
+    }
+  }
+  // top is a boundary
+  if (y1_ == Y1_) {
+    J = jb;
+    for (I = ia-ngp; J <= ib+ngp; ++J) {
+      Unp1[I][J] = TBC[J];
+    }    
+  }
+
+}
+
+double calculateMaximumResidualError() {
+
+  double err = 0.;
+  double check;
+
+  for (I = ia+1; I <= ib-1; ++I) {
+    for (J = ja+1; J <= jb-1; ++J) {
+      // use residual of equation
+      check = fabs( (1./(dx*dx))*(Unp1[I+1][J]-2.*Unp1[I][J]+Unp1[I-1][J]) +
+		   (1./(dy*dy))*(Unp1[I][J+1]-2.*Unp1[I][J]+Unp1[I][J-1]) -
+		   F[I][J] );
+      if (check > err) {
+	err = check;
+      }
+    }
+  }
+
+  return err;
+}
+
+
 
 // --- External Functions --- //
 int initializeProblemInputs(int caseNumber );
@@ -371,17 +435,31 @@ int main(int argc, char* argv[]) {
     return 0;
   }
 
-  printf("done MPI initialization \n");
-  
+  if (verboseFlag) {
+    printf("%s MPI initialization is done \n",verboseTag);
+  }
+
   // --- Grid Initialization --- //
   initializeGrid();
-  printf("done Grid initialization \n");
+  if (verboseFlag) {
+    printf("%s Grid initialization is done \n",verboseTag);
+  }
 
+  // --- Problem Inputs --- //
   int test = 0;
   inputFlag = initializeProblemInputs(test);
+  if (inputFlag) {
+    usage(argv[0],6);
+  }
+
+  if (verboseFlag) {
+    printf("%s \n",verboseTag);
+    printf("%s Begin iterations: \n",verboseTag);
+  }
 
   // --- Iteration Loop --- //
   int n, k; // TODO, better names for these vars
+  double err;
 
   // perform iterations
   for (n = 0; n < maxIter; ++n){
@@ -389,16 +467,14 @@ int main(int argc, char* argv[]) {
     // perform sub iterations for the amount of
     // ghost points
     for (k = 0; k < ngp; ++k) {
-      //(jacobi/CG/..)
       // --- Jacobi --- //
       jacobiStep();
 
       // --- Update BCs --- //
-      // TODO
+      updateBCs();
       
       // --- Advance --- //
       advanceGrid();
-
     }
 
     // todo figure this out
@@ -408,12 +484,37 @@ int main(int argc, char* argv[]) {
     // TODO, do this
 
     // todo implement this
-    // if(err < criterion)
-    //     break;
 
-    //communication(send and recieve parallel ghost lines)
+    err = calculateMaximumResidualError();
+    if (verboseFlag) {
+      if (n%printFrequency == 0) {
+	printf("    n = %4d: err = %6.3e \n",n,err);
+      }
+    }
 
+    // todo, need to consider multiple ranks 
+    if (err < tol) {
+        break;
+    }
+
+    // communication(send and recieve parallel ghost lines)
     MPI_Barrier(network);
+  }
+
+  if (verboseFlag) {
+    if (n == maxIter) {
+      printf("%s Solver exited because the maximum ",verboseTag);
+      printf("number of iterations were exceeded \n");
+      printf("    maxIter = %6d \n",maxIter);
+      printf("    err     = %6.3e \n",err);
+      printf("    tol     = %6.3e \n",tol);
+    } else {
+      printf("%s Solver exited because the residual ",verboseTag);
+      printf("error is less than the tolerance \n");
+      printf("    nIter = %6d \n",n);
+      printf("    err   = %6.3e \n",err); 
+      printf("    tol   = %6.3e \n",tol); 
+    }
   }
     
   MPI_Finalize();
