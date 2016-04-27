@@ -51,7 +51,7 @@ double forcingFunction(double x, double y, int caseNumber) {
   if( caseNumber == 0) {
     return 0.;
   } else if( caseNumber == 1) {
-    return 1.;
+    return 0.;
   }
 }  
   
@@ -60,31 +60,32 @@ double lbc(double y, int caseNumber) {
   if( caseNumber == 0) {
     return 1.;
   } else if( caseNumber == 1) {
-    return 1.;
+    return exp(2*x0_)*sin(2*y);
   }
+
 }
 
 double rbc(double y, int caseNumber) {
   if( caseNumber == 0) {
     return 1.;
   } else if( caseNumber == 1) {
-    return 1.;
+    return exp(2*x1_)*sin(2*y);
   }
 }
 
-double tbc(double y, int caseNumber) {
+double tbc(double x, int caseNumber) {
   if( caseNumber == 0) {
     return 1.;
   } else if( caseNumber == 1) {
-    return 1.;
+    return exp(2*x)*sin(2*y1_);
   }
 }
 
-double bbc(double y, int caseNumber) {
+double bbc(double x, int caseNumber) {
   if( caseNumber == 0) {
     return 1.;
   } else if( caseNumber == 1) {
-    return 1.;
+    return exp(2*x)*sin(2*y0_);
   }
 }
 
@@ -93,12 +94,18 @@ int initializeProblemInputs(int caseNumber) {
   // Choose the correct problem inputs based on the casename
   // and fill in forcing function grid, boundary conditions
 
+  // casenumber is invalid
+  if ((caseNumber < 0) || (caseNumber > 1)) {
+    return 1;
+  }
+  // print casename
   if (verboseFlag) {
     printf("%s ",verboseTag);
-    if( caseNumber == 0) {
+    if (caseNumber == 0) {
       printf("casename: constant \n");
-    }
-    else {
+    } else if (caseNumber == 1) {
+      printf("casename: harmonic function \n");
+    } else {
       return 1;
     }  
   }
