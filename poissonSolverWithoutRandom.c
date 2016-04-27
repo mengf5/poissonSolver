@@ -85,6 +85,7 @@ SUBGRID TBC;
 int maxIter; // Maximum number of iterations before killing the program
 int ngp; // Number of ghost cell layers to communicate
 double tol = 1.e-06;
+int casenumber;
 
 // Flags
 int verboseFlag;
@@ -101,11 +102,16 @@ void usage(char* name, int error) {
   switch(error) {
   case 1:
     printf("Incorrect number of input arguments.\n");
-    printf("Usage: %s Nx Ny maxIter ngp nThreads [-v] \n",name);
+    printf("Usage: %s Nx Ny maxIter ngp nThreads casename ",name);
+    printf("[-t tol] [-v] \n");
     printf("       Nx, Ny   = grid size in x and y \n");
     printf("       maxIter  = maximum number of iterations \n");
     printf("       ngp      = number of ghost points \n");
     printf("       nThreads = number of threads \n");
+    printf("       casename = number corresponding to case \n");
+    printf("       -t       = optional flag for tolerance ");
+    printf("specification \n");
+    printf("       tol      = input argument for tolerance \n");
     printf("       -v       = optional argument for verbose output \n");
     break;
   case 2:
@@ -127,6 +133,9 @@ void usage(char* name, int error) {
   case 6:
     printf("   Invalid casename selected.\n");
     break;
+  case 7:
+    printf("   [-t] was an input argument, but [tol] was not specified. \n");
+    break;
   default:
     printf("   It is literally impossible to get here in the program.\n");
     printf("   This must be the work of the divine Maybe function!\n");
@@ -140,17 +149,58 @@ int inputHandler(int argc, char* argv[]) {
   verboseFlag = 0;
 
   // Incorrect number of input arguments
-  if (argc == 7) {
-    if (strcmp(argv[6],"-v") == 0) {
+  // max number of inputs = 10
+  // min number of inputs = 7
+  // [-t tol] and [-v] are optional 
+  if (argc > 7) {
+    if (strcmp(argv[7],"-v") == 0) {
+      // first optional argument is [-v]
       if (myRank == 0) {
 	verboseFlag = 1;
 	verboseTag = "v>>";
 	printf("%s Verbose output enabled \n",verboseTag);
       }
+
+      // check for a second optional argument
+      if ((argc > 8) && (strcmp(argv[8],"-t") == 0)) {
+	// [-t] is an argument
+	if (argc == 10) {
+	  // set value of tol
+	  tol = atof(argv[9]);
+	} else if (argc > 10) {
+	  return 1;
+	} else {
+	  // tol not specified
+	  return 7;
+	}
+      }
+
+    } else if (strcmp(argv[7],"-t") == 0) {
+      // first optional argument is [-t]
+      if (argc > 9) {
+	// set value of tol
+	tol = atof(argv[9]);
+      } else {
+	// tol not specified
+	return 7;
+      }
+
+      // check for second optional argument
+      if (argc == 10) {
+	// [-v] is inputted
+	if (myRank == 0) {
+	  verboseFlag = 1;
+	  verboseTag = "v>>";
+	  printf("%s Verbose output enabled \n",verboseTag);
+	}
+      } else {
+	return 1;
+      }
+
     } else {
       return 1;
     }
-  } else if (argc != 6) {
+  } else if (argc != 7) {
     return 1;
   }
 
@@ -204,12 +254,21 @@ int inputHandler(int argc, char* argv[]) {
   // processors in each dimension
   if (partition == 1){
     Npx = Nx/M;
-    Npy = Ny/M;}
-  else if (partition == 2){
+    Npy = Ny/M;
+  }
+  else if (partition == 2) {
     Npx = 1;
-    Npy = nProc;}
+    Npy = nProc;
+  }
 
-  //Let keep it this way assuming we nondimensionalize every problem to unit square
+  // casenumber 
+  casenumber = strtol(argv[6], &ptr, 10); 
+
+  // todo print inputs
+
+  // Let keep it this way assuming we nondimensionalize 
+  // every problem to unit square
+
   // Global Axis limits
   // todo, define in input file
   X0_ = 0.;
@@ -446,10 +505,13 @@ int main(int argc, char* argv[]) {
   }
 
   // --- Problem Inputs --- //
-  int test = 0;
-  inputFlag = initializeProblemInputs(test);
-  if (inputFlag) {
-    usage(argv[0],6);
+  inputFlag = initializeProblemInputs(casenumber);
+  if (inputFlag == 1) {
+    if (myRank == 0) {
+      usage(argv[0],6);
+    }
+    MPI_Finalize();
+    return;
   }
 
   if (verboseFlag) {
@@ -488,6 +550,7 @@ int main(int argc, char* argv[]) {
     err = calculateMaximumResidualError();
     if (verboseFlag) {
       if (n%printFrequency == 0) {
+	// todo, make a table, don't repeat n and err
 	printf("    n = %4d: err = %6.3e \n",n,err);
       }
     }
