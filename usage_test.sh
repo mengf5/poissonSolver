@@ -40,3 +40,11 @@ echo " "
 echo "// --- bad tol input --- //"
 mpirun -n $nProc ./poissonSolver.o $Nx $Ny $maxIter $ngp $nThreads 0 -v -t
 echo " "
+
+echo "// --- bad tol input --- //"
+mpirun -n $nProc ./poissonSolver.o $Nx $Ny $maxIter $ngp $nThreads 0 -v -1 -t
+echo " "
+
+echo "// --- bad tol input --- //"
+mpirun -n $nProc ./poissonSolver.o $Nx $Ny $maxIter $ngp $nThreads 0 -t -v -1
+echo " "
