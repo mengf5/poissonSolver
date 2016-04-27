@@ -90,7 +90,7 @@ int casenumber;
 // Flags
 int verboseFlag;
 char* verboseTag;
-int printFrequency=10; // print iteration status every 10 iterations
+int printFrequency=-1; // print iteration status every 10 iterations
 
 // --- Function declarations --- //
 
@@ -103,16 +103,18 @@ void usage(char* name, int error) {
   case 1:
     printf("Incorrect number of input arguments.\n");
     printf("Usage: %s Nx Ny maxIter ngp nThreads casename ",name);
-    printf("[-t tol] [-v] \n");
-    printf("       Nx, Ny   = grid size in x and y \n");
-    printf("       maxIter  = maximum number of iterations \n");
-    printf("       ngp      = number of ghost points \n");
-    printf("       nThreads = number of threads \n");
-    printf("       casename = number corresponding to case \n");
-    printf("       -t       = optional flag for tolerance ");
+    printf("[-t tol] [-v printFreq] \n");
+    printf("       Nx, Ny    = grid size in x and y \n");
+    printf("       maxIter   = maximum number of iterations \n");
+    printf("       ngp       = number of ghost points \n");
+    printf("       nThreads  = number of threads \n");
+    printf("       casename  = number corresponding to case \n");
+    printf("       -t        = optional flag for tolerance ");
     printf("specification \n");
-    printf("       tol      = input argument for tolerance \n");
-    printf("       -v       = optional argument for verbose output \n");
+    printf("       tol       = input argument for tolerance \n");
+    printf("       -v        = optional argument for verbose output \n");
+    printf("       printFreq = frequency to print iteration progress. ");
+    printf("Set negative for no iteration progress. \n");
     break;
   case 2:
     printf("   Unable to parse size of the grid.\n");
@@ -149,25 +151,42 @@ int inputHandler(int argc, char* argv[]) {
   verboseFlag = 0;
 
   // Incorrect number of input arguments
-  // max number of inputs = 10
+
+  // max number of inputs = 11
+  int maxIn = 11;
   // min number of inputs = 7
-  // [-t tol] and [-v] are optional 
-  if (argc > 7) {
+  int minIn = 7;
+  // [-t tol] and [-v printFrequency] are optional 
+  if (argc > minIn) {
     if (strcmp(argv[7],"-v") == 0) {
       // first optional argument is [-v]
-      if (myRank == 0) {
-	verboseFlag = 1;
-	verboseTag = "v>>";
-	printf("%s Verbose output enabled \n",verboseTag);
-      }
-
       // check for a second optional argument
       if ((argc > 8) && (strcmp(argv[8],"-t") == 0)) {
-	// [-t] is an argument
-	if (argc == 10) {
+	// [-t] is the next argument and 
+	// printFrequency is not specified, therefore
+	// max # of inputs is now (maxIn-1)
+	if (argc == maxIn-1) { 
 	  // set value of tol
-	  tol = atof(argv[9]);
-	} else if (argc > 10) {
+	  tol = atof(argv[maxIn-1-1]);
+	} else if (argc > maxIn-1) {
+	  // wrong number of input args
+	  return 1;
+	} else {
+	  // tol not specified
+	  return 7;
+	}
+      } else if (argc > 8) {
+	// printFrequency is the next argument
+	printFrequency = atoi(argv[8]);
+	
+	// [-t] is the next argument and 
+	// printFrequency is specified, therefore
+	// max # of inputs is (maxIn)
+	if (argc == maxIn) { 
+	  // set value of tol
+	  tol = atof(argv[maxIn-1]);
+	} else if (argc > maxIn) {
+	  // wrong number of input args
 	  return 1;
 	} else {
 	  // tol not specified
@@ -175,32 +194,50 @@ int inputHandler(int argc, char* argv[]) {
 	}
       }
 
+      // enable verbose output
+      if (myRank == 0) {
+	verboseFlag = 1;
+	verboseTag = "v>>";
+	printf("%s Verbose output enabled \n",verboseTag);
+      }
+
     } else if (strcmp(argv[7],"-t") == 0) {
       // first optional argument is [-t]
-      if (argc > 9) {
+      if ((argc > 8) && (strcmp(argv[8],"-v") != 0)) {
 	// set value of tol
-	tol = atof(argv[9]);
+	tol = atof(argv[8]);
       } else {
 	// tol not specified
 	return 7;
       }
 
       // check for second optional argument
-      if (argc == 10) {
+      if (argc > 9) {
 	// [-v] is inputted
+	if (argc == maxIn) {
+	  printFrequency = atoi(argv[maxIn-1]);
+	} else if (argc > maxIn) {
+	  return 1;
+	}
+	// check for printFrequency input
+
+	// enable verbose output
 	if (myRank == 0) {
 	  verboseFlag = 1;
 	  verboseTag = "v>>";
 	  printf("%s Verbose output enabled \n",verboseTag);
 	}
-      } else {
+      } else if (argc != 9) {
+	// incorrect number of inputs
 	return 1;
       }
 
     } else {
+      // incorrect number of inputs
       return 1;
     }
-  } else if (argc != 7) {
+  } else if (argc != minIn) {
+    // incorrect number of inputs
     return 1;
   }
 
@@ -471,7 +508,22 @@ double calculateMaximumResidualError() {
   return err;
 }
 
+void printInputs() {
+  // grid ngp, maxIter tol
+  // ranks, , , nThreads, partition type
 
+  printf("%s Input summary: \n",verboseTag);
+  printf("    %5s %5s %4s %8s %10s \n","Nx","Ny","ngp","maxIter","tol");
+  printf("    %5d %5d %4d %8d %10.3e \n",Nx,Ny,ngp,maxIter,tol);
+  printf("    %5s %9s %10s \n","ranks","nThreads","partition");
+  printf("    %5d %9d ",nProc,nThreads);
+  if (partition == 1) {
+    printf("%10s \n","square");
+  } else {
+    printf("%10s \n","slender");
+  }
+
+}
 
 // --- External Functions --- //
 int initializeProblemInputs(int caseNumber );
@@ -495,6 +547,7 @@ int main(int argc, char* argv[]) {
   }
 
   if (verboseFlag) {
+    printInputs();
     printf("%s MPI initialization is done \n",verboseTag);
   }
 
@@ -515,7 +568,8 @@ int main(int argc, char* argv[]) {
   }
 
   if (verboseFlag) {
-    printf("%s \n",verboseTag);
+    printf("%s Problem initialization is done \n",verboseTag);
+    printf("\n");
     printf("%s Begin iterations: \n",verboseTag);
   }
 
@@ -549,7 +603,9 @@ int main(int argc, char* argv[]) {
 
     err = calculateMaximumResidualError();
     if (verboseFlag) {
-      if (n%printFrequency == 0) {
+      if (printFrequency < 0) {
+
+      } else if (n%printFrequency == 0) {
 	// todo, make a table, don't repeat n and err
 	printf("    n = %4d: err = %6.3e \n",n,err);
       }
