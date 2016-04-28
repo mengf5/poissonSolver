@@ -48,3 +48,7 @@ echo " "
 echo "// --- bad tol input --- //"
 mpirun -n $nProc ./poissonSolver.o $Nx $Ny $maxIter $ngp $nThreads 0 -t -v -1
 echo " "
+
+echo "// --- bad partition --- //"
+mpirun -n 2 ./poissonSolver.o 9 9 $maxIter $ngp $nThreads 0 
+echo " "
