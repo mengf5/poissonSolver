@@ -20,9 +20,11 @@
 // - change forcingFunction and (b,t,l,r)bc 
 
 // 4/26/16 DS
-// - implemented applyBCs()
-// - implemented residual error check
-// - ran test with 1 rank, it converges!
+// - implemented applyBCs() (and debugged)
+// - implemented residual/global error check
+// - ran tests with 1 rank, it converges!
+// - see testResults.txt
+// - rotated the slenderness b/c U[I][J], we want to send messages with blocks in y
 
 // --- TODO --- //
 // - initial guess needed
@@ -32,6 +34,8 @@
 // - input tolerance as optional parameter?
 // - communication
 // - threads
+// - may need slender in other direction
+
 
 #include<stdio.h>
 #include<stdlib.h>
@@ -53,12 +57,12 @@ int nProc; // Number of processors
 int myRank; // My rank
 int nThreads; // Number of threads
 int threadSupport; // level of desired thread support
-int partition = 1;// partition scheme, 1 for square 2 for slender rect. // for now 1 is not available. 
+int partition = 2; // partition scheme, 1 for square 2 for slender rect.
+// for now 1 is not available. 
 
 // Grid
 int Nx, Ny; // Global grid cells in x and y
 int Npx, Npy; // Number of processors in x and y dimensions
-int M; // Local grid cells in box
 int Mx, My; // Local grid cells in rect. in x and y 
 int N_matrix; // length of matrix
 
@@ -86,6 +90,7 @@ int maxIter; // Maximum number of iterations before killing the program
 int ngp; // Number of ghost cell layers to communicate
 double tol = 1.e-06;
 int casenumber;
+int checkSolution;
 
 // Flags
 int verboseFlag;
@@ -114,33 +119,47 @@ void usage(char* name, int error) {
     printf("       tol       = input argument for tolerance \n");
     printf("       -v        = optional argument for verbose output \n");
     printf("       printFreq = frequency to print iteration progress. ");
-    printf("Set negative for no iteration progress. \n");
+    printf("Set negative for no iteration \n");
+    printf("                   progress. Set to -2 for compact output \n");
     break;
   case 2:
-    printf("   Unable to parse size of the grid.\n");
-    printf("   The size of the grid should be a positive integer.\n");
+    printf("Unable to parse size of the grid.\n");
+    printf("The size of the grid should be a positive integer.\n");
     break;
   case 3:
-    printf("   Unable to parse the maximum number of iterations.\n");
-    printf("   Maximum iterations should be a positive integer.\n");
+    printf("Unable to parse the maximum number of iterations.\n");
+    printf("Maximum iterations should be a positive integer.\n");
     break;
   case 4:
-    printf("   Unable to parse the number of threads.\n");
-    printf("   The number of threads should be a positive integer.\n");
+    printf("Unable to parse the number of threads.\n");
+    printf("The number of threads should be a positive integer.\n");
     break;
   case 5:
-    printf("   Unable to parse the number of ghost layers.\n");
-    printf("   The number of ghost layers should be a positive integer.\n");
+    printf("Unable to parse the number of ghost layers.\n");
+    printf("The number of ghost layers should be a positive integer.\n");
     break;
   case 6:
-    printf("   Invalid casename selected.\n");
+    printf("Invalid casename selected.\n");
     break;
   case 7:
-    printf("   [-t] was an input argument, but [tol] was not specified. \n");
+    printf("[-t] was an input argument, but [tol] was not specified. \n");
+    break;
+  case 8:
+    printf("partition = 1, the grid must be able to be divided into square ");
+    printf("patches for each rank. \n");
+    printf("The squares must be fitted in x and y. \n");
+    break;
+  case 9:
+    printf("partition = 2, the grid must be able to be divided into slender ");
+    printf("rectangles. \n");
+    printf("The squares must be fitted in y. \n");
+    break;
+  case 10:
+    printf("Invalid parition choice, must choose 1 for squares or 2 for slender rectangles\n");
     break;
   default:
-    printf("   It is literally impossible to get here in the program.\n");
-    printf("   This must be the work of the divine Maybe function!\n");
+    printf("It is literally impossible to get here in the program.\n");
+    printf("This must be the work of the divine Maybe function!\n");
     break;
   }
 }
@@ -195,7 +214,7 @@ int inputHandler(int argc, char* argv[]) {
       }
 
       // enable verbose output
-      if (myRank == 0) {
+      if ((myRank == 0) && (printFrequency != -2)) {
 	verboseFlag = 1;
 	verboseTag = "v>>";
 	printf("%s Verbose output enabled \n",verboseTag);
@@ -222,7 +241,7 @@ int inputHandler(int argc, char* argv[]) {
 	// check for printFrequency input
 
 	// enable verbose output
-	if (myRank == 0) {
+	if ((myRank == 0) && (printFrequency != -2)) {
 	  verboseFlag = 1;
 	  verboseTag = "v>>";
 	  printf("%s Verbose output enabled \n",verboseTag);
@@ -258,17 +277,26 @@ int inputHandler(int argc, char* argv[]) {
   // and the resulting square blocks
   // divide the number of rows and columns
   if (partition == 1){
-    M = (int) sqrt(Nx*Ny/nProc);}
-  else if(partition == 2){
-    Mx = Nx;
-    My = Ny/nProc;
+    Mx = (int) sqrt(Nx*Ny/nProc);
+    My = Mx;
+  } else if (partition == 2){
+    Mx = Nx/nProc;
+    My = Ny;
   }
 
   // todo change this check
   // make sure this error check works for our situation
-  /* if ((Nx*Ny-M*M*nProc != 0) || (Nx%M != 0) || (Ny%M != 0)) { */
-  /*   return 2; */
-  /* } */
+  if (partition == 1) {
+    if ((Nx*Ny-Mx*My*nProc != 0) || (Nx%Mx != 0) || (Ny%My != 0)) {
+      return 8;
+    }
+  } else if (partition == 2) {
+    if (Nx%Mx != 0) {
+      return 9;
+    }
+  } else {
+    return 10;
+  }
   
   // Parse the number of iterations before death
   maxIter = strtol(argv[3], &ptr, 10); 
@@ -290,12 +318,11 @@ int inputHandler(int argc, char* argv[]) {
 
   // processors in each dimension
   if (partition == 1){
-    Npx = Nx/M;
-    Npy = Ny/M;
-  }
-  else if (partition == 2) {
-    Npx = 1;
-    Npy = nProc;
+    Npx = Nx/Mx;
+    Npy = Ny/My;
+  } else if (partition == 2) {
+    Npx = nProc;
+    Npy = 1;
   }
 
   // casenumber 
@@ -323,9 +350,9 @@ int inputHandler(int argc, char* argv[]) {
   if (partition == 1){
     x0_ = X0_ + dX*(myRank%Npx);
     y0_ = Y0_ + dY*(myRank%Npx);}
-  else if (partition == 1){
-    x0_ = X0_;
-    y0_ = Y0_ + dY*(myRank%nProc);
+  else if (partition == 2) {
+    x0_ = X0_ + dX*(myRank%nProc);
+    y0_ = Y0_;
   }
   
   x1_ = x0_ + dX;
@@ -377,42 +404,30 @@ void initializeMPI(int argc, char* argv[]) {
 // initialize Grid
 void initializeGrid() {
 
-  // calculate ia and ib
-  if (partition == 1){
-    ia = ngp;
-    ib = M+ngp;
-    ja = ngp;
-    jb = M+ngp;
-  }
-  else if (partition == 2){
-    ia = ngp;
-    ib = Mx+ngp;
-    ja = ngp;
-    jb = My+ngp;
-  }
-  
+  ia = ngp;
+  ib = Mx+ngp;
+  ja = ngp;
+  jb = My+ngp;
 
   // todo, be wary of sizes of all arrays
   // 2D grid for solution
-  Unp1 = (GRID) malloc(sizeof(SUBGRID)*(M+1+2*ngp));
-  Un   = (GRID) malloc(sizeof(SUBGRID)*(M+1+2*ngp));
+  Unp1 = (GRID) malloc(sizeof(SUBGRID)*(Mx+1+2*ngp));
+  Un   = (GRID) malloc(sizeof(SUBGRID)*(Mx+1+2*ngp));
   // 2D grid for forcing function
-  F    = (GRID) malloc(sizeof(SUBGRID)*(M+1+2*ngp));
+  F    = (GRID) malloc(sizeof(SUBGRID)*(Mx+1+2*ngp));
 
   // 1D grid for boundaries
-  LBC = (SUBGRID) malloc(sizeof(double)*(M+1+2*ngp));
-  RBC = (SUBGRID) malloc(sizeof(double)*(M+1+2*ngp));
-  BBC = (SUBGRID) malloc(sizeof(double)*(M+1+2*ngp));
-  TBC = (SUBGRID) malloc(sizeof(double)*(M+1+2*ngp));
+  LBC = (SUBGRID) malloc(sizeof(double)*(My+1+2*ngp));
+  RBC = (SUBGRID) malloc(sizeof(double)*(My+1+2*ngp));
+  BBC = (SUBGRID) malloc(sizeof(double)*(Mx+1+2*ngp));
+  TBC = (SUBGRID) malloc(sizeof(double)*(Mx+1+2*ngp));
 
   // Allocate 
   for (I = ia-ngp; I <= ib+ngp; ++I) {
-    Unp1[I] = (SUBGRID) malloc(sizeof(double)*(M+1+2*ngp));
-    Un[I]   = (SUBGRID) malloc(sizeof(double)*(M+1+2*ngp));
-    F[I]    = (SUBGRID) malloc(sizeof(double)*(M+1+2*ngp));
+    Unp1[I] = (SUBGRID) malloc(sizeof(double)*(My+1+2*ngp));
+    Un[I]   = (SUBGRID) malloc(sizeof(double)*(My+1+2*ngp));
+    F[I]    = (SUBGRID) malloc(sizeof(double)*(My+1+2*ngp));
 
-    LBC[I]  = 0.;
-    RBC[I]  = 0.;
     BBC[I]  = 0.;
     TBC[I]  = 0.;
 
@@ -423,6 +438,11 @@ void initializeGrid() {
       F[I][J]    = 0.;
     }
   }
+
+  for (J = jb-ngp; J <= jb+ngp; ++J) {
+    LBC[J]  = 0.;
+    RBC[J]  = 0.;
+  }
 }
 
 // Jacobi
@@ -431,15 +451,26 @@ void jacobiStep() {
   // 1/dx^2 * (U_{i+1,j}^n - 2 U_{i,j}^{n+1} + U_{i-1,j}^n) + ...
   // 1/dy^2 * (U_{i,j+1}^n - 2 U_{i,j}^{n+1} + U_{i,j-1}^n) = f_{i,j}
 
+  // dy^2 * (U_{i+1,j}^n + U_{i-1,j}^n) + ...
+  // dx^2 * (U_{i,j+1}^n + U_{i,j-1}^n) - ...
+  // dx^2 dy^2 * (f_{i,j}) = ...
+  // 2 (dy^2 + dx^2) * (U_{i,j})
+
+  
   // Todo, make it look nicer  
-  double preMultiplier = (.5/(1./(dx*dx)+1./(dy*dy)));
+  double A_ = .5*(dy*dy)/(dy*dy+dx*dx);
+  double B_ = .5*(dx*dx)/(dy*dy+dx*dx);
+  double C_ = -.5*(dx*dx*dy*dy)/(dy*dy+dx*dx);
   // Todo, change to ja and jb
   for (I = ia-ngp+1; I <= ib+ngp-1; ++I) {
     for (J = ja-ngp+1; J <= jb+ngp-1; ++J) {
-      Unp1[I][J] = preMultiplier*
-	( (1./(dx*dx))*(Un[I+1][J]+Un[I-1][J]) +
-	  (1./(dy*dy))*(Un[I][J+1]+Un[I][J-1]) -
-	  F[I][J] );
+      /* Unp1[I][J] = preMultiplier* */
+      /* 	( (1./(dx*dx))*(Un[I+1][J]+Un[I-1][J]) + */
+      /* 	  (1./(dy*dy))*(Un[I][J+1]+Un[I][J-1]) - */
+      /* 	  F[I][J] ); */
+      Unp1[I][J] = A_*(Un[I+1][J]+Un[I-1][J]) +
+	B_*(Un[I][J+1]+Un[I][J-1]) +
+	C_*F[I][J];
     }
   }
 }
@@ -462,13 +493,14 @@ void updateBCs() {
     I = ia;
     for (J = ja-ngp; J <= jb+ngp; ++J) {
       Unp1[I][J] = LBC[J];
+      /* printf("u(%d,%d) = %9.3e, or %9.3e \n",I-ia,J-ja,Unp1[I][J],LBC[J]); */
     }
   }
   // bottom is a boundary
   if (y0_ == Y0_) {
     J = ja;
-    for (I = ia-ngp; J <= ib+ngp; ++J) {
-      Unp1[I][J] = BBC[J];
+    for (I = ia-ngp; I <= ib+ngp; ++I) {
+      Unp1[I][J] = BBC[I];
     }    
   }
   // right is a boundary
@@ -481,10 +513,11 @@ void updateBCs() {
   // top is a boundary
   if (y1_ == Y1_) {
     J = jb;
-    for (I = ia-ngp; J <= ib+ngp; ++J) {
-      Unp1[I][J] = TBC[J];
+    for (I = ia-ngp; I <= ib+ngp; ++I) {
+      Unp1[I][J] = TBC[I];
     }    
   }
+
 
 }
 
@@ -522,13 +555,12 @@ void printInputs() {
   } else {
     printf("%10s \n","slender");
   }
-
+  printf(" \n");
 }
 
 // --- External Functions --- //
 int initializeProblemInputs(int caseNumber );
-
-
+double checkError(int caseNumber );
 
 // --- Main --- //
 int main(int argc, char* argv[]) {
@@ -621,6 +653,7 @@ int main(int argc, char* argv[]) {
   }
 
   if (verboseFlag) {
+    printf("\n");
     if (n == maxIter) {
       printf("%s Solver exited because the maximum ",verboseTag);
       printf("number of iterations were exceeded \n");
@@ -630,12 +663,23 @@ int main(int argc, char* argv[]) {
     } else {
       printf("%s Solver exited because the residual ",verboseTag);
       printf("error is less than the tolerance \n");
-      printf("    nIter = %6d \n",n);
-      printf("    err   = %6.3e \n",err); 
-      printf("    tol   = %6.3e \n",tol); 
+      printf("    nIter = %9d \n",n);
+      printf("    err   = %9.3e \n",err); 
+      printf("    tol   = %9.3e \n",tol); 
     }
   }
-    
+
+  double globalError;
+  globalError = checkError(casenumber);
+  if (verboseFlag) {
+    printf("%s globalError = %9.3e \n",verboseTag,globalError);
+  } else if (printFrequency == -2) {
+    printf("%5s %5s %4s %6s %6s %9s %10s %10s %5s \n",
+	   "Nx","Ny","ngp","nIter","nRanks","nThreads","res","err","case");
+    printf("%5d %5d %4d %6d %6d %9d %10.3e %10.3e %5d \n",
+	   Nx,Ny,ngp,n,nProc,nThreads,err,globalError,casenumber);
+  }
+  
   MPI_Finalize();
   return 0;
 }
