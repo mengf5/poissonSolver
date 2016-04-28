@@ -37,6 +37,19 @@
 // - may need slender in other direction
 
 
+// 4/28/16 FM
+// - add array TGL/BGL for communication ghost lines
+// - implemented MPI_Isend and Irecv for send/recv ghost lines
+// - implemented updateGhosts to send Ghost line to Un
+// - didn't mess up the serial code.
+
+// --- TODO --- //
+// - run some test on this
+// - threads
+// - change the order we save from U[i][j] to U[j][i] than we can
+//   use no ghost lines and just send U[J]
+
+
 #include<stdio.h>
 #include<stdlib.h>
 #include<mpi.h>
@@ -53,6 +66,11 @@ typedef double* SUBGRID;
 // --- Global Variables --- //
 // MPI
 MPI_Comm network; // This is MPI_COMM_WORLD
+MPI_Request requestSend1, requestRecv1;
+MPI_Request requestSend2, requestRecv2;
+MPI_Status status1;
+MPI_Status status2;
+
 int nProc; // Number of processors
 int myRank; // My rank
 int nThreads; // Number of threads
@@ -84,6 +102,12 @@ SUBGRID LBC;
 SUBGRID RBC;
 SUBGRID BBC;
 SUBGRID TBC;
+// communication conditions
+SUBGRID BGL;
+SUBGRID TGL;
+SUBGRID BGLp1;
+SUBGRID TGLp1;
+
 
 // Solver
 int maxIter; // Maximum number of iterations before killing the program
@@ -421,6 +445,9 @@ void initializeGrid() {
   RBC = (SUBGRID) malloc(sizeof(double)*(My+1+2*ngp));
   BBC = (SUBGRID) malloc(sizeof(double)*(Mx+1+2*ngp));
   TBC = (SUBGRID) malloc(sizeof(double)*(Mx+1+2*ngp));
+  // 1D grid for communication ghost line
+  BGL = (SUBGRID) malloc(sizeof(double)*(Mx+1+2*ngp));
+  TGL = (SUBGRID) malloc(sizeof(double)*(Mx+1+2*ngp));
 
   // Allocate 
   for (I = ia-ngp; I <= ib+ngp; ++I) {
@@ -435,8 +462,12 @@ void initializeGrid() {
     for (J = ja-ngp; J <= jb+ngp; ++J) {
       Unp1[I][J] = 0.;
       Un[I][J]   = 0.;
-      F[I][J]    = 0.;
+      F[I][J]    = 0.;      
     }
+    J = ja-ngp;
+    BGL[I]  = Un[I][J];
+    J = jb+ngp;
+    TGL[I]  = Un[I][J];
   }
 
   for (J = jb-ngp; J <= jb+ngp; ++J) {
@@ -482,7 +513,7 @@ void advanceGrid() {
     for (J = ja-ngp; J <= jb+ngp; ++J) {
       Un[I][J] = Unp1[I][J];
     }
-  }  
+  }
 }
 
 void updateBCs() {
@@ -520,6 +551,33 @@ void updateBCs() {
 
 
 }
+
+void updateGhosts() {
+  // Update boundary cells if applicable
+
+  // bottom is a ghost line
+  if (y0_ != Y0_) {
+    J = ja;
+    for (I = ia-ngp; I <= ib+ngp; ++I) {
+      Un[I][J] = BGL[I];
+    }    
+  }
+
+  // top is a ghost line
+  if (y1_ != Y1_) {
+    J = jb;
+    for (I = ia-ngp; I <= ib+ngp; ++I) {
+      Un[I][J] = TGL[I];
+    }    
+  }
+
+
+}
+
+
+
+
+
 
 double calculateMaximumResidualError() {
 
@@ -596,7 +654,7 @@ int main(int argc, char* argv[]) {
       usage(argv[0],6);
     }
     MPI_Finalize();
-    return;
+    return 0;
   }
 
   if (verboseFlag) {
@@ -623,6 +681,24 @@ int main(int argc, char* argv[]) {
       
       // --- Advance --- //
       advanceGrid();
+
+      // --- Communication --- //
+      // --- exchange BBC/TBC --- //
+
+      if( nProc > 1){
+	MPI_Irecv(&(BGLp1), Mx, MPI_DOUBLE, myRank+1, 1234, MPI_COMM_WORLD,&requestRecv1);
+	MPI_Irecv(&(TGLp1), Mx, MPI_DOUBLE, myRank-1, 1234, MPI_COMM_WORLD,&requestRecv2); 
+	MPI_Isend(&(BGL), Mx, MPI_DOUBLE, myRank-1, 1234, MPI_COMM_WORLD,&requestSend1);
+	MPI_Isend(&(TGL), Mx, MPI_DOUBLE, myRank+1, 1234, MPI_COMM_WORLD,&requestSend2);
+	MPI_Wait(&requestSend1, &status1);
+      	MPI_Wait(&requestRecv1, &status1);
+	MPI_Wait(&requestSend2, &status2);
+	MPI_Wait(&requestRecv2, &status2);
+      }
+      
+      // --- Update Ghost line value of Un --- //
+      updateGhosts();
+      
     }
 
     // todo figure this out
