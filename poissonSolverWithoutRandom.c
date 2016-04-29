@@ -42,12 +42,13 @@
 // - implemented MPI_Isend and Irecv for send/recv ghost lines
 // - implemented updateGhosts to send Ghost line to Un
 // - didn't mess up the serial code.
+// 4/29/16 FM
+// - change the comm to slender block
+// - form a vector for all ghost lines and send them together.
 
 // --- TODO --- //
 // - run some test on this
 // - threads
-// - change the order we save from U[i][j] to U[j][i] than we can
-//   use no ghost lines and just send U[J]
 
 
 #include<stdio.h>
@@ -86,7 +87,7 @@ int N_matrix; // length of matrix
 
 int ia,ib; // local index of i=0 to i=Mx
 int ja,jb; // local index of j=0 to j=My
-int I, J; // indices
+int I, J, J1, G; // indices
 
 // Note: y0 and y1 are taken due to some internal c reason
 double x0_, x1_, y0_, y1_; // local axis limits
@@ -103,10 +104,10 @@ SUBGRID RBC;
 SUBGRID BBC;
 SUBGRID TBC;
 // communication conditions
-SUBGRID BGL;
-SUBGRID TGL;
-SUBGRID BGLp1;
-SUBGRID TGLp1;
+SUBGRID LGL;
+SUBGRID RGL;
+SUBGRID LGLp1;
+SUBGRID RGLp1;
 
 
 // Solver
@@ -446,8 +447,8 @@ void initializeGrid() {
   BBC = (SUBGRID) malloc(sizeof(double)*(Mx+1+2*ngp));
   TBC = (SUBGRID) malloc(sizeof(double)*(Mx+1+2*ngp));
   // 1D grid for communication ghost line
-  BGL = (SUBGRID) malloc(sizeof(double)*(Mx+1+2*ngp));
-  TGL = (SUBGRID) malloc(sizeof(double)*(Mx+1+2*ngp));
+  LGL = (SUBGRID) malloc(sizeof(double)*(My+1+2*ngp)*ngp);
+  RGL = (SUBGRID) malloc(sizeof(double)*(My+1+2*ngp)*ngp);
 
   // Allocate 
   for (I = ia-ngp; I <= ib+ngp; ++I) {
@@ -464,15 +465,19 @@ void initializeGrid() {
       Un[I][J]   = 0.;
       F[I][J]    = 0.;      
     }
-    J = ja-ngp;
-    BGL[I]  = Un[I][J];
-    J = jb+ngp;
-    TGL[I]  = Un[I][J];
   }
 
-  for (J = jb-ngp; J <= jb+ngp; ++J) {
+  for (J = ja-ngp; J <= jb+ngp; ++J) {
     LBC[J]  = 0.;
     RBC[J]  = 0.;
+  }
+
+  for (G = 1; G<= ngp; ++G){
+    for (J = ja-ngp; J <= jb+ngp; ++J) {
+      J1 = J + (My+1+2*ngp)*(G-1);
+      LGL[J1] = Un[ia-G][J];
+      RGL[J1] = Un[ib+G][J];
+    }
   }
 }
 
@@ -552,28 +557,55 @@ void updateBCs() {
 
 }
 
-void updateGhosts() {
+void collectGhosts() {
   // Update boundary cells if applicable
 
-  // bottom is a ghost line
-  if (y0_ != Y0_) {
-    J = ja;
-    for (I = ia-ngp; I <= ib+ngp; ++I) {
-      Un[I][J] = BGL[I];
-    }    
+  // form left ghost array
+  if (x0_ != X0_) {
+    for (G = 1; G<= ngp; ++G){
+      for (J = ja-ngp; J <= jb+ngp; ++J) {
+	J1 = J + (My+1+2*ngp)*(G-1);
+	LGL[J1] = Un[ia+G][J];
+      }
+    }
   }
 
-  // top is a ghost line
-  if (y1_ != Y1_) {
-    J = jb;
-    for (I = ia-ngp; I <= ib+ngp; ++I) {
-      Un[I][J] = TGL[I];
-    }    
+  // form right ghost array
+  if (x1_ != X1_) {
+    for (G = 1; G<= ngp; ++G){
+      for (J = ja-ngp; J <= jb+ngp; ++J) {
+	J1 = J + (My+1+2*ngp)*(G-1);
+	RGL[J1] = Un[ib-G][J];
+      }
+    }
   }
-
 
 }
 
+void updateGhosts() {
+  // Update boundary cells if applicable
+
+  // form left ghost array
+  if (x0_ != X0_) {
+    for (G = 1; G<= ngp; ++G){
+      for (J = ja-ngp; J <= jb+ngp; ++J) {
+	J1 = J + (My+1+2*ngp)*(G-1);
+	Un[ia-G][J]  = LGLp1[J1];
+      }
+    }
+  }
+
+  // form right ghost array
+  if (x1_ != X1_) {
+    for (G = 1; G<= ngp; ++G){
+      for (J = ja-ngp; J <= jb+ngp; ++J) {
+	J1 = J + (My+1+2*ngp)*(G-1);
+	Un[ib+G][J] = RGLp1[J1];;
+      }
+    }
+  }
+
+}
 
 
 
@@ -682,14 +714,17 @@ int main(int argc, char* argv[]) {
       // --- Advance --- //
       advanceGrid();
 
+      // --- Collect ghost line value of Un --- //
+      collectGhosts();
+
       // --- Communication --- //
       // --- exchange BBC/TBC --- //
-
+      
       if( nProc > 1){
-	MPI_Irecv(&(BGLp1), Mx, MPI_DOUBLE, myRank+1, 1234, MPI_COMM_WORLD,&requestRecv1);
-	MPI_Irecv(&(TGLp1), Mx, MPI_DOUBLE, myRank-1, 1234, MPI_COMM_WORLD,&requestRecv2); 
-	MPI_Isend(&(BGL), Mx, MPI_DOUBLE, myRank-1, 1234, MPI_COMM_WORLD,&requestSend1);
-	MPI_Isend(&(TGL), Mx, MPI_DOUBLE, myRank+1, 1234, MPI_COMM_WORLD,&requestSend2);
+	MPI_Irecv(&(LGLp1), (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank+1, 1234, MPI_COMM_WORLD,&requestRecv1);
+	MPI_Irecv(&(RGLp1), (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank-1, 1234, MPI_COMM_WORLD,&requestRecv2); 
+	MPI_Isend(&(LGL)  , (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank-1, 1234, MPI_COMM_WORLD,&requestSend1);
+	MPI_Isend(&(RGL)  , (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank+1, 1234, MPI_COMM_WORLD,&requestSend2);
 	MPI_Wait(&requestSend1, &status1);
       	MPI_Wait(&requestRecv1, &status1);
 	MPI_Wait(&requestSend2, &status2);
