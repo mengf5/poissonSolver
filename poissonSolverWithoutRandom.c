@@ -721,14 +721,25 @@ int main(int argc, char* argv[]) {
       // --- exchange BBC/TBC --- //
       
       if( nProc > 1){
-	MPI_Irecv(&(LGLp1), (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank+1, 1234, MPI_COMM_WORLD,&requestRecv1);
-	MPI_Irecv(&(RGLp1), (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank-1, 1234, MPI_COMM_WORLD,&requestRecv2); 
-	MPI_Isend(&(LGL)  , (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank-1, 1234, MPI_COMM_WORLD,&requestSend1);
-	MPI_Isend(&(RGL)  , (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank+1, 1234, MPI_COMM_WORLD,&requestSend2);
+	printf("myRank = %i",myRank);
+	if (myRank == 0) {
+	  MPI_Irecv(&(RGLp1), (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank+1, 1234, MPI_COMM_WORLD,&requestRecv2); 
+	  MPI_Isend(&(RGL)  , (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank+1, 1234, MPI_COMM_WORLD,&requestSend2);
+	}
+	else if (myRank==nProc){
+	  MPI_Irecv(&(LGLp1), (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank-1, 1234, MPI_COMM_WORLD,&requestRecv1);
+	  MPI_Isend(&(LGL)  , (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank-1, 1234, MPI_COMM_WORLD,&requestSend1);
+	}
+	else{
+	  MPI_Irecv(&(LGLp1), (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank-1, 1234, MPI_COMM_WORLD,&requestRecv1);
+	  MPI_Irecv(&(RGLp1), (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank+1, 1234, MPI_COMM_WORLD,&requestRecv2); 
+	  MPI_Isend(&(LGL)  , (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank-1, 1234, MPI_COMM_WORLD,&requestSend1);
+	  MPI_Isend(&(RGL)  , (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank+1, 1234, MPI_COMM_WORLD,&requestSend2);
+	}
 	MPI_Wait(&requestSend1, &status1);
-      	MPI_Wait(&requestRecv1, &status1);
+	MPI_Wait(&requestRecv1, &status1);
 	MPI_Wait(&requestSend2, &status2);
-	MPI_Wait(&requestRecv2, &status2);
+      	MPI_Wait(&requestRecv2, &status2);
       }
       
       // --- Update Ghost line value of Un --- //
