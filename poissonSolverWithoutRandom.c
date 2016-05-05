@@ -447,8 +447,11 @@ void initializeGrid() {
   BBC = (SUBGRID) malloc(sizeof(double)*(Mx+1+2*ngp));
   TBC = (SUBGRID) malloc(sizeof(double)*(Mx+1+2*ngp));
   // 1D grid for communication ghost line
+  // p1 is the recieving bay, the others will be sent
   LGL = (SUBGRID) malloc(sizeof(double)*(My+1+2*ngp)*ngp);
   RGL = (SUBGRID) malloc(sizeof(double)*(My+1+2*ngp)*ngp);
+  LGLp1 = (SUBGRID) malloc(sizeof(double)*(My+1+2*ngp)*ngp);
+  RGLp1 = (SUBGRID) malloc(sizeof(double)*(My+1+2*ngp)*ngp);
 
   // Allocate 
   for (I = ia-ngp; I <= ib+ngp; ++I) {
@@ -477,6 +480,8 @@ void initializeGrid() {
       J1 = J + (My+1+2*ngp)*(G-1);
       LGL[J1] = Un[ia-G][J];
       RGL[J1] = Un[ib+G][J];
+      LGLp1[J1] = Un[ia-G][J];
+      RGLp1[J1] = Un[ib+G][J];
     }
   }
 }
@@ -492,7 +497,7 @@ void jacobiStep() {
   // dx^2 dy^2 * (f_{i,j}) = ...
   // 2 (dy^2 + dx^2) * (U_{i,j})
 
-  
+  /* printf("rank %d: in jacobi \n",myRank); */
   // Todo, make it look nicer  
   double A_ = .5*(dy*dy)/(dy*dy+dx*dx);
   double B_ = .5*(dx*dx)/(dy*dy+dx*dx);
@@ -504,9 +509,15 @@ void jacobiStep() {
       /* 	( (1./(dx*dx))*(Un[I+1][J]+Un[I-1][J]) + */
       /* 	  (1./(dy*dy))*(Un[I][J+1]+Un[I][J-1]) - */
       /* 	  F[I][J] ); */
+      /* printf("rank %d: in loop \n",myRank); */
+      /* printf("i+1 %f \n",Un[I+1][J]); */
+      /* printf("i-1 %f\n",Un[I-1][J]); */
+      /* printf("j+1 %f\n",Un[I][J+1]); */
+      /* printf("j-1 %f\n",Un[I][J-1]); */
       Unp1[I][J] = A_*(Un[I+1][J]+Un[I-1][J]) +
 	B_*(Un[I][J+1]+Un[I][J-1]) +
 	C_*F[I][J];
+      /* printf("rank %d: (%d,%d)\n",myRank,I,J); */
     }
   }
 }
@@ -560,12 +571,14 @@ void updateBCs() {
 void collectGhosts() {
   // Update boundary cells if applicable
 
+
   // form left ghost array
   if (x0_ != X0_) {
     for (G = 1; G<= ngp; ++G){
       for (J = ja-ngp; J <= jb+ngp; ++J) {
 	J1 = J + (My+1+2*ngp)*(G-1);
 	LGL[J1] = Un[ia+G][J];
+	/* printf("LGL[%d] = %f \n",J1,LGL[J1]); */
       }
     }
   }
@@ -576,6 +589,7 @@ void collectGhosts() {
       for (J = ja-ngp; J <= jb+ngp; ++J) {
 	J1 = J + (My+1+2*ngp)*(G-1);
 	RGL[J1] = Un[ib-G][J];
+	/* printf("RGL[%d] = %f \n",J1,RGL[J1]); */
       }
     }
   }
@@ -584,13 +598,16 @@ void collectGhosts() {
 
 void updateGhosts() {
   // Update boundary cells if applicable
-
+  /* printf("rank %d: \n",myRank); */
   // form left ghost array
   if (x0_ != X0_) {
     for (G = 1; G<= ngp; ++G){
       for (J = ja-ngp; J <= jb+ngp; ++J) {
 	J1 = J + (My+1+2*ngp)*(G-1);
+	/* printf("rank %d: LGLp1[%d] = %f \n",myRank,J1,LGLp1[J1]); */
 	Un[ia-G][J]  = LGLp1[J1];
+	/* printf("rank %d: (I,J) = (%d,%d)",myRank,ia-G,J); */
+
       }
     }
   }
@@ -601,6 +618,7 @@ void updateGhosts() {
       for (J = ja-ngp; J <= jb+ngp; ++J) {
 	J1 = J + (My+1+2*ngp)*(G-1);
 	Un[ib+G][J] = RGLp1[J1];;
+	/* printf("rank %d: RGLp1[%d] = %f \n",myRank,J1,RGLp1[J1]); */
       }
     }
   }
@@ -697,58 +715,85 @@ int main(int argc, char* argv[]) {
 
   // --- Iteration Loop --- //
   int n, k; // TODO, better names for these vars
-  double err;
+  double err, maxErr;
 
   // perform iterations
   for (n = 0; n < maxIter; ++n){
+    /* printf("-------- n = %d ---------\n",n); */
 
     // perform sub iterations for the amount of
     // ghost points
     for (k = 0; k < ngp; ++k) {
+
+      /* printf("rank %d: Jacobi \n",myRank); */
       // --- Jacobi --- //
       jacobiStep();
 
+      /* printf("rank %d: BCs \n",myRank); */
       // --- Update BCs --- //
       updateBCs();
       
+      /* printf("rank %d: advance \n",myRank); */
       // --- Advance --- //
       advanceGrid();
 
-      // --- Collect ghost line value of Un --- //
-      collectGhosts();
-
-      // --- Communication --- //
-      // --- exchange BBC/TBC --- //
-
-      if( nProc > 1){
-
-	if (myRank == 0) {
-	  MPI_Irecv(&(RGLp1), (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank+1, 1234, network,&requestRecv2); 
-	  MPI_Isend(&(RGL)  , (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank+1, 1234, network,&requestSend2);
-	}
-	else if (myRank==nProc){
-	  MPI_Irecv(&(LGLp1), (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank-1, 1234, network,&requestRecv1);
-	  MPI_Isend(&(LGL)  , (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank-1, 1234, network,&requestSend1);
-	}
-	else{
-	  MPI_Irecv(&(LGLp1), (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank-1, 1234, network,&requestRecv1);
-	  MPI_Irecv(&(RGLp1), (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank+1, 1234, network,&requestRecv2); 
-	  MPI_Isend(&(LGL)  , (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank-1, 1234, network,&requestSend1);
-	  MPI_Isend(&(RGL)  , (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank+1, 1234, network,&requestSend2);
-	}
-	MPI_Wait(&requestSend1, &status1);
-	MPI_Wait(&requestRecv1, &status1);
-	MPI_Wait(&requestSend2, &status2);
-      	MPI_Wait(&requestRecv2, &status2);
-      }
-      
-      // --- Update Ghost line value of Un --- //
-      updateGhosts();
-      
     }
 
+    /* printf("rank %d: before collect ghost\n ",myRank); */
+    // --- Collect ghost line value of Un --- //
+    collectGhosts();
+    /* printf("rank %d: after collect ghost\n",myRank); */
+    // --- Communication --- //
+    // --- exchange BBC/TBC --- //
+
+    if( nProc > 1){
+
+      if (myRank == 0) {
+	MPI_Irecv(&(RGLp1[0]), (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank+1, 1234, network,&requestRecv2); 
+	MPI_Isend(&(RGL[0])  , (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank+1, 1234, network,&requestSend2);
+      }
+      else if (myRank==nProc-1){
+	MPI_Irecv(&(LGLp1[0]), (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank-1, 1234, network,&requestRecv1);
+	MPI_Isend(&(LGL[0])  , (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank-1, 1234, network,&requestSend1);
+      }
+      else{
+	MPI_Irecv(&(LGLp1[0]), (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank-1, 1234, network,&requestRecv1);
+	MPI_Irecv(&(RGLp1[0]), (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank+1, 1234, network,&requestRecv2); 
+	MPI_Isend(&(LGL[0])  , (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank-1, 1234, network,&requestSend1);
+	MPI_Isend(&(RGL[0])  , (My+1+2*ngp)*ngp, MPI_DOUBLE, myRank+1, 1234, network,&requestSend2);
+      }
+
+      if (myRank != 0) {
+	// todo, check if sending is needed
+	MPI_Wait(&requestSend1, &status1);
+	MPI_Wait(&requestRecv1, &status1);
+      }
+      if (myRank != nProc-1) {
+	MPI_Wait(&requestSend2, &status2);
+	MPI_Wait(&requestRecv2, &status2);
+      }
+    }
+      
+    /* printf("rank %d: before update ghost \n",myRank); */
+    // --- Update Ghost line value of Un --- //
+    updateGhosts();
+    /* printf("rank %d: after update ghost \n",myRank); */
+
+
+
+
+
+
+
+
+
+
+
+
+
+    /* printf("rank %d: hi \n",myRank); */
     // todo figure this out
-    MPI_Barrier(network);
+    /* MPI_Barrier(network); */
 
     // --- Communication --- //
     // TODO, do this
@@ -760,46 +805,51 @@ int main(int argc, char* argv[]) {
       if (printFrequency < 0) {
 
       } else if (n%printFrequency == 0) {
-	// todo, make a table, don't repeat n and err
-	printf("    n = %4d: err = %6.3e \n",n,err);
+    	// todo, make a table, don't repeat n and err
+    	printf("    n = %4d: err = %6.3e \n",n,err);
       }
     }
 
     // todo, need to consider multiple ranks 
-    if (err < tol) {
-        break;
+    // barrier
+    MPI_Allreduce(&err,&maxErr,1,MPI_DOUBLE,MPI_MAX,network);
+    if (maxErr < tol) {
+      
+      break;
     }
 
     // communication(send and recieve parallel ghost lines)
-    MPI_Barrier(network);
+    /* MPI_Barrier(network); */
   }
 
-  if (verboseFlag) {
-    printf("\n");
-    if (n == maxIter) {
-      printf("%s Solver exited because the maximum ",verboseTag);
-      printf("number of iterations were exceeded \n");
-      printf("    maxIter = %6d \n",maxIter);
-      printf("    err     = %6.3e \n",err);
-      printf("    tol     = %6.3e \n",tol);
-    } else {
-      printf("%s Solver exited because the residual ",verboseTag);
-      printf("error is less than the tolerance \n");
-      printf("    nIter = %9d \n",n);
-      printf("    err   = %9.3e \n",err); 
-      printf("    tol   = %9.3e \n",tol); 
-    }
-  }
+  /* if (verboseFlag) { */
+  /*   printf("\n"); */
+  /*   if (n == maxIter) { */
+  /*     printf("%s Solver exited because the maximum ",verboseTag); */
+  /*     printf("number of iterations were exceeded \n"); */
+  /*     printf("    maxIter = %6d \n",maxIter); */
+  /*     printf("    err     = %6.3e \n",err); */
+  /*     printf("    tol     = %6.3e \n",tol); */
+  /*   } else { */
+  /*     printf("%s Solver exited because the residual ",verboseTag); */
+  /*     printf("error is less than the tolerance \n"); */
+  /*     printf("    nIter = %9d \n",n); */
+  /*     printf("    err   = %9.3e \n",err);  */
+  /*     printf("    tol   = %9.3e \n",tol);  */
+  /*   } */
+  /* } */
 
-  double globalError;
+  double globalError, maxGlobalError;
   globalError = checkError(casenumber);
+  MPI_Allreduce(&globalError,&maxGlobalError,1,MPI_DOUBLE,MPI_MAX,network);
   if (verboseFlag) {
-    printf("%s globalError = %9.3e \n",verboseTag,globalError);
-  } else if (printFrequency == -2) {
+    printf("%s globalError = %9.3e \n",verboseTag,maxGlobalError);
+  } else if ((printFrequency == -2) && (myRank == 0)){
+
     printf("%5s %5s %4s %6s %6s %9s %10s %10s %5s \n",
-	   "Nx","Ny","ngp","nIter","nRanks","nThreads","res","err","case");
+  	   "Nx","Ny","ngp","nIter","nRanks","nThreads","res","err","case");
     printf("%5d %5d %4d %6d %6d %9d %10.3e %10.3e %5d \n",
-	   Nx,Ny,ngp,n,nProc,nThreads,err,globalError,casenumber);
+  	   Nx,Ny,ngp,n,nProc,nThreads,err,maxGlobalError,casenumber);
   }
   
   MPI_Finalize();

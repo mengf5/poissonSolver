@@ -12,12 +12,12 @@
 #        printFreq = frequency to print iteration progress. Set negative for no iteration progress 
 #                    Set to -2 for compact output
 
-nProc=1
-Nx=40
-Ny=40
-maxIter=150000
+nProc=2
+Nx=16
+Ny=16
+maxIter=1000
 nThreads=1
-ngp=1
+ngp=2
 casename=2
 tol=1.e-08
 printFreq=-2
@@ -26,7 +26,7 @@ printFreq=-2
 # mpirun -n $nProc ./poissonSolver.o $Nx $Ny $maxIter $ngp $nThreads $casename -t $tol -v
 # mpirun -n $nProc ./poissonSolver.o $Nx $Ny $maxIter $ngp $nThreads $casename -t $tol -v $printFreq
 # mpirun -n $nProc ./poissonSolver.o $Nx $Ny $maxIter $ngp $nThreads $casename -v $printFreq -t $tol 
-mpirun -n $nProc ./poissonSolver.o $Nx $Ny $maxIter $ngp $nThreads $casename -v -t $tol 
+mpirun -n $nProc ./poissonSolver.o $Nx $Ny $maxIter $ngp $nThreads $casename -v $printFreq -t $tol 
 
 
 
