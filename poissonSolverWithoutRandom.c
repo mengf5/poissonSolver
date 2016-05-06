@@ -26,6 +26,9 @@
 // - see testResults.txt
 // - rotated the slenderness b/c U[I][J], we want to send messages with blocks in y
 
+// 5/5/16 all
+// - debugged comm and ghost points
+
 // --- TODO --- //
 // - initial guess needed
 // - maxIter should account for sub-iterations
@@ -35,7 +38,6 @@
 // - communication
 // - threads
 // - may need slender in other direction
-
 
 // 4/28/16 FM
 // - add array TGL/BGL for communication ghost lines
@@ -84,10 +86,12 @@ int Nx, Ny; // Global grid cells in x and y
 int Npx, Npy; // Number of processors in x and y dimensions
 int Mx, My; // Local grid cells in rect. in x and y 
 int N_matrix; // length of matrix
+int Mx_t; // number of grid cells per thread
 
 int ia,ib; // local index of i=0 to i=Mx
 int ja,jb; // local index of j=0 to j=My
 int I, J, J1, G; // indices
+
 
 // Note: y0 and y1 are taken due to some internal c reason
 double x0_, x1_, y0_, y1_; // local axis limits
@@ -337,7 +341,15 @@ int inputHandler(int argc, char* argv[]) {
   
   // Parse the nubmer of threads
   nThreads = strtol(argv[5], &ptr, 10); 
-  if (*ptr != '\0' || nThreads < 1) {
+  if (nThreads == 0) {
+    Mx_t = Mx;
+  } else {
+    Mx_t = Mx/nThreads;
+  }
+  if ((*ptr != '\0') || (nThreads < 0)) {
+    return 4;
+  }
+  if ((nThreads != 0) && (nThreads*Mx_t != Mx)) {
     return 4;
   }
 
@@ -487,7 +499,7 @@ void initializeGrid() {
 }
 
 // Jacobi
-void jacobiStep() {
+void jacobiStep(int iStart,int iEnd) {
   // Scheme is
   // 1/dx^2 * (U_{i+1,j}^n - 2 U_{i,j}^{n+1} + U_{i-1,j}^n) + ...
   // 1/dy^2 * (U_{i,j+1}^n - 2 U_{i,j}^{n+1} + U_{i,j-1}^n) = f_{i,j}
@@ -503,7 +515,8 @@ void jacobiStep() {
   double B_ = .5*(dx*dx)/(dy*dy+dx*dx);
   double C_ = -.5*(dx*dx*dy*dy)/(dy*dy+dx*dx);
   // Todo, change to ja and jb
-  for (I = ia-ngp+1; I <= ib+ngp-1; ++I) {
+  /* for (I = ia-ngp+1; I <= ib+ngp-1; ++I) { */
+  for (I = iStart; I <= iEnd; ++I) {
     for (J = ja-ngp+1; J <= jb+ngp-1; ++J) {
       /* Unp1[I][J] = preMultiplier* */
       /* 	( (1./(dx*dx))*(Un[I+1][J]+Un[I-1][J]) + */
@@ -522,22 +535,25 @@ void jacobiStep() {
   }
 }
 
-void advanceGrid() {
+void advanceGrid(int iStart, int iEnd) {
   // Copy grid Unp1 to Un
   // Todo, copy everything?
-  for (I = ia-ngp; I <= ib+ngp; ++I) {
+  /* for (I = ia-ngp; I <= ib+ngp; ++I) { */
+  for (I = iStart; I <= iEnd; ++I) {
     for (J = ja-ngp; J <= jb+ngp; ++J) {
       Un[I][J] = Unp1[I][J];
     }
   }
 }
 
-void updateBCs() {
+void updateBCs(int iStart, int iEnd) {
   // Update boundary cells if applicable
 
-  // left is a boundary
-  if (x0_ == X0_) {
+  // left is a boundary, and thread handles BC
+  /* printf("istart = %d, ia-ngp = %d \n",iStart,ia-ngp); */
+  if ((x0_ == X0_) && (iStart == ia-ngp)) {
     I = ia;
+    /* printf("fuckfuckfuckfuckfuckfuck \n"); */
     for (J = ja-ngp; J <= jb+ngp; ++J) {
       Unp1[I][J] = LBC[J];
       /* printf("u(%d,%d) = %9.3e, or %9.3e \n",I-ia,J-ja,Unp1[I][J],LBC[J]); */
@@ -546,12 +562,14 @@ void updateBCs() {
   // bottom is a boundary
   if (y0_ == Y0_) {
     J = ja;
-    for (I = ia-ngp; I <= ib+ngp; ++I) {
+    /* for (I = ia-ngp; I <= ib+ngp; ++I) { */
+    for (I = iStart; I <= iEnd; ++I) {
       Unp1[I][J] = BBC[I];
     }    
   }
-  // right is a boundary
-  if (x1_ == X1_) {
+  // right is a boundary, and thread handles BC
+  /* printf("iend = %d, ib+ngp = %d \n",iEnd,ib+ngp); */
+  if ((x1_ == X1_) && (iEnd == ib+ngp)) {
     I = ib;
     for (J = ja-ngp; J <= jb+ngp; ++J) {
       Unp1[I][J] = RBC[J];
@@ -560,7 +578,8 @@ void updateBCs() {
   // top is a boundary
   if (y1_ == Y1_) {
     J = jb;
-    for (I = ia-ngp; I <= ib+ngp; ++I) {
+    /* for (I = ia-ngp; I <= ib+ngp; ++I) { */
+    for (I = iStart; I <= iEnd; ++I) {
       Unp1[I][J] = TBC[I];
     }    
   }
@@ -666,6 +685,62 @@ void printInputs() {
   printf(" \n");
 }
 
+void *doOneStep(void *i_thread) {
+  // thread number
+
+  // get thread id
+  long thread_id = (long) i_thread;
+
+  // get index start and end
+  int iStart0 = ((int)(thread_id))*Mx_t+ia;
+  int iEnd0 = iStart0+Mx_t;
+  int iStart = iStart0;
+  int iEnd = iEnd0;
+  int k;
+  /* printf("tid = %d \n",(int) thread_id); */
+  /* printf("Mx_t = %d, ia = %d \n",Mx_t,ia); */
+  /* printf("t = %d, beginning of thread. iStart = %d, iEnd = %d \n", */
+  /* 	 thread_id,iStart0,iEnd0); */
+
+  for (k = 0; k < ngp; ++k) {
+    // handle corner cases
+    if (thread_id == 0) {
+      iStart = iStart0-ngp+1   -1;
+    } 
+    if (thread_id == nThreads-1) {
+      iEnd = iEnd0+ngp-1;
+    }
+
+    // --- Jacobi --- //
+    /* printf("t = %d, before jacobi \n",thread_id); */
+    jacobiStep(iStart+1,iEnd);
+    /* printf("t = %d, after jacobi \n",thread_id); */
+
+    // handle corner cases again
+    if (thread_id == 0) {
+      iStart = iStart   -1;
+    } 
+    if (thread_id == nThreads-1) {
+      iEnd = iEnd     +1;
+    }
+
+    /* printf("t = %d, beginning of thread. iStart = %d, iEnd = %d \n", */
+    /* 	   thread_id,iStart,iEnd); */
+
+    // --- Update BCs --- //
+    updateBCs(iStart+1,iEnd);
+    /* printf("t = %d, after update \n",thread_id); */
+
+
+    // --- Advance --- //
+    advanceGrid(iStart+1,iEnd);
+    /* printf("t = %d, after advance \n",thread_id); */
+  }
+
+  pthread_exit(NULL);
+}
+
+
 // --- External Functions --- //
 int initializeProblemInputs(int caseNumber );
 double checkError(int caseNumber );
@@ -717,27 +792,56 @@ int main(int argc, char* argv[]) {
   int n, k; // TODO, better names for these vars
   double err, maxErr;
 
+  // thread vars  
+  int rc;
+  long i_thread;
+  pthread_t threads[nThreads];
+
   // perform iterations
   for (n = 0; n < maxIter; ++n){
     /* printf("-------- n = %d ---------\n",n); */
 
     // perform sub iterations for the amount of
     // ghost points
-    for (k = 0; k < ngp; ++k) {
+    if (nThreads == 0) {
+      // subiterations
+      for (k = 0; k < ngp; ++k) {
+	// --- Jacobi --- //
+	jacobiStep(ia-ngp+1,ib+ngp-1);
 
-      /* printf("rank %d: Jacobi \n",myRank); */
-      // --- Jacobi --- //
-      jacobiStep();
-
-      /* printf("rank %d: BCs \n",myRank); */
-      // --- Update BCs --- //
-      updateBCs();
+	// --- Update BCs --- //
+	updateBCs(ia-ngp,ib+ngp);
       
-      /* printf("rank %d: advance \n",myRank); */
-      // --- Advance --- //
-      advanceGrid();
+	// --- Advance --- //
+	advanceGrid(ia-ngp,ib+ngp);
+      
+      } 
+    } else {
+      /* printf("rank %d: before create \n",myRank); */
+      // launch threads and do subiterations
+      for (i_thread = 0; i_thread < nThreads; ++i_thread) {
+	rc = pthread_create(&threads[i_thread],NULL,doOneStep,(void*)i_thread);
+      }
+      /* printf("rank %d: after create fuck \n",myRank); */
 
+      // handle errors
+      if (rc) {
+	if (myRank == 0) {
+	  usage(argv[0],6);
+	}
+	MPI_Finalize();
+	exit(0);
+      }
+      /* printf("rank %d: after check fuck \n",myRank); */
+
+      // join
+      for (i_thread = 0; i_thread < nThreads; ++i_thread) {
+	pthread_join(threads[i_thread],NULL);
+      }
+
+      /* printf("rank %d: after join fuck \n",myRank); */
     }
+
 
     /* printf("rank %d: before collect ghost\n ",myRank); */
     // --- Collect ghost line value of Un --- //
@@ -778,18 +882,6 @@ int main(int argc, char* argv[]) {
     // --- Update Ghost line value of Un --- //
     updateGhosts();
     /* printf("rank %d: after update ghost \n",myRank); */
-
-
-
-
-
-
-
-
-
-
-
-
 
     /* printf("rank %d: hi \n",myRank); */
     // todo figure this out

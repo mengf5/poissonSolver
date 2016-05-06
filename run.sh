@@ -13,14 +13,14 @@
 #                    Set to -2 for compact output
 
 nProc=2
-Nx=16
-Ny=16
-maxIter=1000
-nThreads=1
-ngp=2
+Nx=60
+Ny=60
+maxIter=10000
+nThreads=10
+ngp=10
 casename=2
 tol=1.e-08
-printFreq=-2
+printFreq=-1
 
 # All these runs work
 # mpirun -n $nProc ./poissonSolver.o $Nx $Ny $maxIter $ngp $nThreads $casename -t $tol -v
