@@ -20,7 +20,7 @@ nThreads=2
 ngp=10
 casename=2
 tol=1.e-10
-printFreq=-1
+printFreq=-2
 
 # All these runs work
 # mpirun -n $nProc ./poissonSolver.o $Nx $Ny $maxIter $ngp $nThreads $casename -t $tol -v
