@@ -59,6 +59,11 @@
 #include<time.h>
 #include<math.h>
 #include<string.h>
+#define BGQ 0
+#if BGQ==1
+// the following header file is needed in BGQ
+#include<hwi/include/bqc/A2_inlines.h>
+#endif
 
 // --- Type Defs --- //
 // grid containers
@@ -126,7 +131,10 @@ char* verboseTag;
 int printFrequency=-1; // print iteration status every 10 iterations
 
 // --- Function declarations --- //
-
+// Timing
+#if BGQ==1
+unsigned long GetTimeBase();
+#endif
 
 // --- Usage --- //
 // error handling
@@ -750,6 +758,30 @@ int main(int argc, char* argv[]) {
   // --- MPI Initialization --- //
   initializeMPI(argc, argv);
   
+#if BGQ==1
+  unsigned long long start_cycle_time=0;
+  unsigned long long end_cycle_time=0;
+  unsigned long long initialization_time=0;
+  unsigned long long calculation_time=0;
+  unsigned long long communication_time=0;
+#elif BGQ==0
+  double start_cycle_time=0;
+  double end_cycle_time=0;
+  double initialization_time=0;
+  double calculation_time=0;
+  double communication_time=0;
+#endif
+
+  // --- Start Timer --- //
+  if (myRank == 0){
+    if (BGQ==0){
+      start_cycle_time = MPI_Wtime();
+    }
+    else{
+      start_cycle_time = GetTimeBase();
+    }
+  }
+
   // --- Parse input --- //
   int inputFlag = inputHandler(argc,argv);
   if (inputFlag != 0) {
@@ -796,6 +828,21 @@ int main(int argc, char* argv[]) {
   long i_thread;
   pthread_t threads[nThreads];
 
+  // initialization time
+  if (myRank == 0){
+    if (BGQ==0){
+      end_cycle_time = MPI_Wtime();
+      initialization_time = end_cycle_time-start_cycle_time;
+      start_cycle_time = end_cycle_time;
+    }
+    else{
+      end_cycle_time = GetTimeBase();
+      initialization_time = end_cycle_time-start_cycle_time;
+      start_cycle_time = end_cycle_time;
+    }
+  }
+
+
   // perform iterations
   for (n = 0; n < maxIter; ++n){
     /* printf("-------- n = %d ---------\n",n); */
@@ -840,6 +887,21 @@ int main(int argc, char* argv[]) {
 
       /* printf("rank %d: after join fuck \n",myRank); */
     }
+
+    // calculation time
+    if (myRank == 0){
+      if (BGQ==0){
+	end_cycle_time = MPI_Wtime();
+	calculation_time += end_cycle_time-start_cycle_time;
+        start_cycle_time = end_cycle_time;
+      }
+      else{
+	end_cycle_time = GetTimeBase();
+	calculation_time += end_cycle_time-start_cycle_time;
+        start_cycle_time = end_cycle_time;
+      }
+    }
+
 
 
     /* printf("rank %d: before collect ghost\n ",myRank); */
@@ -909,6 +971,20 @@ int main(int argc, char* argv[]) {
       break;
     }
 
+    // communication time
+    if (myRank == 0){
+      if (BGQ==0){
+	end_cycle_time = MPI_Wtime();
+	communication_time += end_cycle_time-start_cycle_time;
+        start_cycle_time = end_cycle_time;
+      }
+      else{
+	end_cycle_time = GetTimeBase();
+	communication_time += end_cycle_time-start_cycle_time;
+        start_cycle_time = end_cycle_time;
+      }
+    }
+
     // communication(send and recieve parallel ghost lines)
     /* MPI_Barrier(network); */
   }
@@ -933,16 +1009,38 @@ int main(int argc, char* argv[]) {
   double globalError, maxGlobalError;
   globalError = checkError(casenumber);
   MPI_Allreduce(&globalError,&maxGlobalError,1,MPI_DOUBLE,MPI_MAX,network);
+
+  // count as initialization time
+  if (myRank == 0){
+    if (BGQ==0){
+      end_cycle_time = MPI_Wtime();
+      initialization_time += end_cycle_time-start_cycle_time;
+      start_cycle_time = end_cycle_time;
+    }
+    else{
+      end_cycle_time = GetTimeBase();
+      initialization_time += end_cycle_time-start_cycle_time;
+      start_cycle_time = end_cycle_time;
+    }
+  }  
+
   if (verboseFlag) {
     printf("%s globalError = %9.3e \n",verboseTag,maxGlobalError);
+    printf("%s initialization_time = %9.3e \n",verboseTag,initialization_time);
+    printf("%s calculation_time    = %9.3e \n",verboseTag,calculation_time);
+    printf("%s communication_time  = %9.3e \n",verboseTag,communication_time);
   } else if ((printFrequency == -2) && (myRank == 0)){
 
-    printf("%5s %5s %4s %6s %6s %9s %10s %10s %5s \n",
-  	   "Nx","Ny","ngp","nIter","nRanks","nThreads","res","err","case");
-    printf("%5d %5d %4d %6d %6d %9d %10.3e %10.3e %5d \n",
-  	   Nx,Ny,ngp,n,nProc,nThreads,err,maxGlobalError,casenumber);
+    printf("%5s %5s %4s %6s %6s %9s %10s %10s %5s %10s %10s %10s\n",
+  	   "Nx","Ny","ngp","nIter","nRanks","nThreads",
+	   "res","err","case","tInit","tCalc","tComm");
+    printf("%5d %5d %4d %6d %6d %9d %10.3e %10.3e %5d %10.3e %10.3e %10.3e\n",
+  	   Nx,Ny,ngp,n,nProc,nThreads,err,maxGlobalError,
+	   casenumber,initialization_time,calculation_time,
+	   communication_time);
   }
-  
+
+
   MPI_Finalize();
   return 0;
 }
