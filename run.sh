@@ -12,14 +12,14 @@
 #        printFreq = frequency to print iteration progress. Set negative for no iteration progress 
 #                    Set to -2 for compact output
 
-nProc=2
-Nx=60
-Ny=60
+nProc=4
+Nx=40
+Ny=40
 maxIter=10000
-nThreads=10
+nThreads=2
 ngp=10
 casename=2
-tol=1.e-08
+tol=1.e-10
 printFreq=-1
 
 # All these runs work

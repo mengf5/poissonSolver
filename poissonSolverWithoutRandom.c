@@ -1,5 +1,3 @@
-// Run with mpirun -n p ./a.out n maxIter thrds g
-
 // --- Acitivity Log --- //
 // 4/21/16 ER
 // - Initial Set up of MPI and data parsing.
@@ -28,6 +26,7 @@
 
 // 5/5/16 all
 // - debugged comm and ghost points
+//
 
 // --- TODO --- //
 // - initial guess needed
