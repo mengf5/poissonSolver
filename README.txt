@@ -1,3 +1,17 @@
+5/9/16
+Instructions for BGQ:
+ - change the code to have
+   #define BGQ 1
+   instead of 
+   #define BGQ 0
+ - change makefile from 
+	mpicc poissonSolverWithoutRandom.c poissonProblemInputs.c -lm -I. -lpthread -g -o poissonSolver.o	
+   to
+	mpixlc poissonSolverWithoutRandom.c poissonProblemInputs.c -lm -I. -pthread -O3 -o poissonSolver.o	
+
+
+
+
 Read me first:
 
 There are several ways to get rid of the need for extern in the extra function files. I have done so in what I believe to be the simplest way, although it's not the cleanest. Here's how it works:
