@@ -8,8 +8,9 @@ Instructions for BGQ:
 	mpicc poissonSolverWithoutRandom.c poissonProblemInputs.c -lm -I. -lpthread -g -o poissonSolver.o	
    to
 	mpixlc poissonSolverWithoutRandom.c poissonProblemInputs.c -lm -I. -pthread -O3 -o poissonSolver.o	
-
-
+ - run the command 
+   chmod +x *.sh
+   so you can run the shell files
 
 
 Read me first:
