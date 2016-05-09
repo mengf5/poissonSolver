@@ -435,15 +435,17 @@ int inputHandler(int argc, char* argv[]) {
 
 // initialize MPI
 void initializeMPI(int argc, char* argv[]) {
-  //    int request = MPI_THREAD_MULTIPLE;
+  /* int request = MPI_THREAD_MULTIPLE; */
   // does yours support the multiple? 
-    int request = MPI_THREAD_FUNNELED;
-    MPI_Init_thread(&argc, &argv, request, &threadSupport);
-    if (request != threadSupport) {
-        if (myRank == 0) {
-            printf("You requested level %d support but only have level %d support.\n", request, threadSupport);
-        }
+  int request = MPI_THREAD_FUNNELED;
+  MPI_Init_thread(&argc, &argv, request, &threadSupport);
+  /* MPI_Init(&argc, &argv); */
+  /* threadSupport = 3; */
+  if (request != threadSupport) {
+    if (myRank == 0) {
+      printf("You requested level %d support but only have level %d support.\n", request, threadSupport);
     }
+  }
   network = MPI_COMM_WORLD;
   MPI_Comm_size(network, &nProc);
   MPI_Comm_rank(network, &myRank);
