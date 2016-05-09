@@ -71,6 +71,10 @@ typedef double** GRID;
 typedef double* SUBGRID;
 
 // --- Global Variables --- //
+
+  pthread_mutex_t lock;
+
+
 // MPI
 MPI_Comm network; // This is MPI_COMM_WORLD
 MPI_Request requestSend1, requestRecv1;
@@ -694,6 +698,7 @@ void printInputs() {
 
 void *doOneStep(void *i_thread) {
   // thread number
+  pthread_mutex_lock(&lock);
 
   // get thread id
   long thread_id = (long) i_thread;
@@ -743,6 +748,7 @@ void *doOneStep(void *i_thread) {
     advanceGrid(iStart+1,iEnd);
     /* printf("t = %d, after advance \n",thread_id); */
   }
+  pthread_mutex_unlock(&lock);
 
   pthread_exit(NULL);
 }
@@ -827,7 +833,7 @@ int main(int argc, char* argv[]) {
   int rc;
   long i_thread;
   pthread_t threads[nThreads];
-
+  /* pthread_mutex_t lock; */
   // initialization time
   if (myRank == 0){
     if (BGQ==0){
@@ -846,6 +852,7 @@ int main(int argc, char* argv[]) {
   // perform iterations
   for (n = 0; n < maxIter; ++n){
     /* printf("-------- n = %d ---------\n",n); */
+    pthread_mutex_init(&lock, NULL) ;
 
     // perform sub iterations for the amount of
     // ghost points
@@ -884,6 +891,7 @@ int main(int argc, char* argv[]) {
       for (i_thread = 0; i_thread < nThreads; ++i_thread) {
 	pthread_join(threads[i_thread],NULL);
       }
+      pthread_mutex_destroy(&lock);
 
       /* printf("rank %d: after join fuck \n",myRank); */
     }
