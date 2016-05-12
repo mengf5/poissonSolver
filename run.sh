@@ -27,8 +27,12 @@ printFreq=-2
 # mpirun -n $nProc ./poissonSolver.o $Nx $Ny $maxIter $ngp $nThreads $casename -t $tol -v $printFreq
 # mpirun -n $nProc ./poissonSolver.o $Nx $Ny $maxIter $ngp $nThreads $casename -v $printFreq -t $tol 
 #mpirun
+<<<<<<< HEAD
+mpirun-openmpi-mp -n $nProc ./poissonSolver.o $Nx $Ny $maxIter $ngp $nThreads $casename -v $printFreq -t $tol 
+=======
 #mpirun -n $nProc ./poissonSolver.o $Nx $Ny $maxIter $ngp $nThreads $casename -v $printFreq -t $tol 
 mpirun -n $nProc ./poissonSolver.o $Nx $Ny $maxIter $ngp $nThreads $casename -v $printFreq -t $tol 
+>>>>>>> 0c28de2890eff7f4a04b0c98efc937dd20c70c62
 
 # for N in 80 160 320
 # do
