@@ -1,0 +1,17 @@
+@Inbook{Bull1992,
+author="Bull, J. M.
+and Freeman, T. L.",
+editor="Boug{\'e}, Luc
+and Cosnard, Michel
+and Robert, Yves
+and Trystram, Denis",
+chapter="Numerical performance of an asynchronous Jacobi iteration",
+title="Parallel Processing: CONPAR 92---VAPP V: Second Joint International Conference on Vector and Parallel Processing Lyon, France, September 1--4, 1992 Proceedings",
+year="1992",
+publisher="Springer Berlin Heidelberg",
+address="Berlin, Heidelberg",
+pages="361--366",
+isbn="978-3-540-47306-0",
+doi="10.1007/3-540-55895-0_431",
+url="http://dx.doi.org/10.1007/3-540-55895-0_431"
+}

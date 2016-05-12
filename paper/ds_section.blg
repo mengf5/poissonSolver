@@ -1,0 +1,49 @@
+This is BibTeX, Version 0.99d (TeX Live 2013/Debian)
+Capacity: max_strings=35307, hash_size=35307, hash_prime=30011
+The top-level auxiliary file: ds_section.aux
+The style file: plain.bst
+Database file #1: project_references.bib
+Warning--can't use both author and editor fields in Bull1992
+Warning--empty journal in Henshaw2001
+You've used 6 entries,
+            2118 wiz_defined-function locations,
+            540 strings with 5033 characters,
+and the built_in function-call counts, 1666 in all, are:
+= -- 157
+> -- 60
+< -- 2
++ -- 25
+- -- 18
+* -- 93
+:= -- 272
+add.period$ -- 16
+call.type$ -- 6
+change.case$ -- 25
+chr.to.int$ -- 0
+cite$ -- 8
+duplicate$ -- 70
+empty$ -- 151
+format.name$ -- 18
+if$ -- 355
+int.to.chr$ -- 0
+int.to.str$ -- 6
+missing$ -- 6
+newline$ -- 31
+num.names$ -- 12
+pop$ -- 44
+preamble$ -- 1
+purify$ -- 21
+quote$ -- 0
+skip$ -- 57
+stack$ -- 0
+substring$ -- 88
+swap$ -- 16
+text.length$ -- 2
+text.prefix$ -- 0
+top$ -- 0
+type$ -- 20
+warning$ -- 2
+while$ -- 17
+width$ -- 7
+write$ -- 60
+(There were 2 warnings)

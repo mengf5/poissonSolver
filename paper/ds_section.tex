@@ -1,0 +1,54 @@
+\documentclass[10pt,letterpaper]{article}
+
+\usepackage[english]{babel}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{placeins}
+\usepackage{amsfonts}
+\usepackage{listings}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{courier}
+\usepackage[colorinlistoftodos]{todonotes}
+\usepackage[margin=1in]{geometry}
+\usepackage{wrapfig}
+\usepackage[justification=centering]{caption}
+\usepackage{hyperref}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+\usepackage{multicol}
+\setlength{\columnsep}{1cm}
+
+\title{Parallel Computing \\ CSCI 6360 \\ Final Project}
+\author{Fanlong Meng, Edward Rusu, Daniel Serino}
+\date{10 May 2016}
+
+\makeatletter
+\def\BState{\State\hskip-\ALG@thistlm}
+\makeatother
+
+\lstset{
+basicstyle=\footnotesize\ttfamily,
+breaklines=true,
+commentstyle=\color{red},
+moredelim=**[is][\slshape]{`}{`},
+moredelim=**[is][\color{red}]{@@}{@@}}
+
+\begin{document}
+
+Bull and Freeman~\cite{Bull1992} analyzed the use of a parallel Jacobi algorithm without using synchronization points. It was found that removing synchronization can remove global solution error oscillations characteristic with the serial Jacobi algorithm and may require fewer iterations to converge.
+
+Many algorithms require synchronization to execute properly. This cost of synchronization can reduce effectiveness. Therefore asynchronous algorithms can greatly improve time. Baudet~\cite{Baudet1978} studied the theory behind asynchronous iterative methods. Baudet presents theorems which guarantee solution convergence for asynchronous computing algorithms.
+
+
+
+As mentioned by Gilge~\cite{IBM2013} and Wisniewski~\cite{BGQ2012}, the Blue Gene/Q is laid out such that each core contains cache used for buffering. There are two levels of caching, L1 and L2. There is an L1P cache that is used as a prefetch to write buffers for the L1 data. The size of L2 is 32 MB. As long as the message buffers used by MPI communication are contained in the cache, the communication will be very fast.
+
+
+~\cite{Henshaw2001}
+~\cite{trefethen97}
+
+\bibliography{project_references}{}
+\bibliographystyle{plain}
+
+\end{document}

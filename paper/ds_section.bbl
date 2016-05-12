@@ -1,0 +1,35 @@
+\begin{thebibliography}{1}
+
+\bibitem{Baudet1978}
+G{\'e}rard~M. Baudet.
+\newblock Asynchronous iterative methods for multiprocessors.
+\newblock {\em J. ACM}, 25(2):226--244, April 1978.
+
+\bibitem{Bull1992}
+J.~M. Bull and T.~L. Freeman.
+\newblock {\em Parallel Processing: CONPAR 92---VAPP V: Second Joint
+  International Conference on Vector and Parallel Processing Lyon, France,
+  September 1--4, 1992 Proceedings}, chapter Numerical performance of an
+  asynchronous Jacobi iteration, pages 361--366.
+\newblock Springer Berlin Heidelberg, Berlin, Heidelberg, 1992.
+
+\bibitem{Henshaw2001}
+Henshaw~W. D. and Petersson~N. A.
+\newblock A split-step scheme for the incompressible navier-stokes equations.
+\newblock 2001.
+
+\bibitem{IBM2013}
+M.~(2013) Gilge.
+\newblock Ibm system blue gene solution blue gene/q application development,
+  2013.
+
+\bibitem{trefethen97}
+Lloyd~N. Trefethen and David Bau.
+\newblock {\em Numerical Linear Algebra}.
+\newblock SIAM, 1997.
+
+\bibitem{BGQ2012}
+R.~W. Wisniewski.
+\newblock Bluegene/q: Architecture, codesign; path to exascale, 2012.
+
+\end{thebibliography}
