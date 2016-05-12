@@ -1,0 +1,32 @@
+   Nx    Ny   Ngp  nIter nRanks  nThreads      tInit      tCalc      tComm     tbatch
+32768 32768     1  10129   2048         0  3.502e-01  7.892e+02  4.744e+02  2.542e+01
+   Nx    Ny   Ngp  nIter nRanks  nThreads      tInit      tCalc      tComm     tbatch
+32768 32768     1  11763    512         4  7.071e-01  8.700e+02  4.136e+02  5.220e+00
+   Nx    Ny   Ngp  nIter nRanks  nThreads      tInit      tCalc      tComm     tbatch
+32768 32768     1   3137    128        16  2.577e+00  8.594e+02  4.273e+02  1.355e+00
+   Nx    Ny   Ngp  nIter nRanks  nThreads      tInit      tCalc      tComm     tbatch
+32768 32768     1    789     32        64  1.009e+01  8.548e+02  4.299e+02  3.390e-01
+   Nx    Ny   Ngp  nIter nRanks  nThreads      tInit      tCalc      tComm     tbatch
+32768 32768     4   2662   2048         0  4.222e-01  1.103e+03  1.530e+02  3.275e+00
+   Nx    Ny   Ngp  nIter nRanks  nThreads      tInit      tCalc      tComm     tbatch
+32768 32768     4   3535    512         4  7.453e-01  1.130e+03  1.506e+02  8.165e+00
+   Nx    Ny   Ngp  nIter nRanks  nThreads      tInit      tCalc      tComm     tbatch
+32768 32768     4   1019    128        16  2.616e+00  1.136e+03  1.518e+02  1.682e+00
+   Nx    Ny   Ngp  nIter nRanks  nThreads      tInit      tCalc      tComm     tbatch
+32768 32768     4    260     32        64  1.016e+01  1.133e+03  1.539e+02  4.290e-01
+   Nx    Ny   Ngp  nIter nRanks  nThreads      tInit      tCalc      tComm     tbatch
+32768 32768     8   1055   2048         0  5.219e-01  1.167e+03  9.900e+01  2.310e+01
+   Nx    Ny   Ngp  nIter nRanks  nThreads      tInit      tCalc      tComm     tbatch
+32768 32768     8   1712    512         4  7.937e-01  1.196e+03  8.442e+01  9.313e+00
+   Nx    Ny   Ngp  nIter nRanks  nThreads      tInit      tCalc      tComm     tbatch
+32768 32768     8    526    128        16  2.654e+00  1.208e+03  8.022e+01  1.741e+00
+   Nx    Ny   Ngp  nIter nRanks  nThreads      tInit      tCalc      tComm     tbatch
+32768 32768     8    137     32        64  1.020e+01  1.207e+03  8.211e+01  4.533e-01
+   Nx    Ny   Ngp  nIter nRanks  nThreads      tInit      tCalc      tComm     tbatch
+32768 32768    16    369   2048         0  7.169e-01  1.224e+03  5.096e+01  1.595e+01
+   Nx    Ny   Ngp  nIter nRanks  nThreads      tInit      tCalc      tComm     tbatch
+32768 32768    16    743    512         4  8.876e-01  1.237e+03  4.402e+01  7.703e+00
+   Nx    Ny   Ngp  nIter nRanks  nThreads      tInit      tCalc      tComm     tbatch
+32768 32768    16    256    128        16  2.733e+00  1.248e+03  4.063e+01  1.715e+00
+   Nx    Ny   Ngp  nIter nRanks  nThreads      tInit      tCalc      tComm     tbatch
+32768 32768    16     69     32        64  1.027e+01  1.244e+03  4.242e+01  4.598e-01
