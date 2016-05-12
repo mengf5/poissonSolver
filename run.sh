@@ -12,12 +12,12 @@
 #        printFreq = frequency to print iteration progress. Set negative for no iteration progress 
 #                    Set to -2 for compact output
 
-nProc=2
-Nx=80
-Ny=80
-maxIter=10000
-nThreads=4
-ngp=10
+nProc=4
+Nx=40
+Ny=40
+maxIter=100000
+nThreads=1
+ngp=11
 casename=2
 tol=1.e-10
 printFreq=-2
@@ -27,8 +27,38 @@ printFreq=-2
 # mpirun -n $nProc ./poissonSolver.o $Nx $Ny $maxIter $ngp $nThreads $casename -t $tol -v $printFreq
 # mpirun -n $nProc ./poissonSolver.o $Nx $Ny $maxIter $ngp $nThreads $casename -v $printFreq -t $tol 
 #mpirun
+<<<<<<< HEAD
 mpirun-openmpi-mp -n $nProc ./poissonSolver.o $Nx $Ny $maxIter $ngp $nThreads $casename -v $printFreq -t $tol 
+=======
+#mpirun -n $nProc ./poissonSolver.o $Nx $Ny $maxIter $ngp $nThreads $casename -v $printFreq -t $tol 
+mpirun -n $nProc ./poissonSolver.o $Nx $Ny $maxIter $ngp $nThreads $casename -v $printFreq -t $tol 
+>>>>>>> 0c28de2890eff7f4a04b0c98efc937dd20c70c62
 
+# for N in 80 160 320
+# do
+#     for iNgp in 1 2 4 8
+#     do
+# 	Ngp="$(($iNgp*$N/80))"
+
+# 	Nt=1
+# 	Np=8
+# 	mpirun -n $Np ./poissonSolver.o $N $N $maxIter $Ngp $Nt $casename -v $printFreq -t $tol 
+
+# 	Nt=2
+# 	Np=4
+# 	mpirun -n $Np ./poissonSolver.o $N $N $maxIter $Ngp $Nt $casename -v $printFreq -t $tol
+	
+# 	Nt=4
+# 	Np=2
+# 	mpirun -n $Np ./poissonSolver.o $N $N $maxIter $Ngp $Nt $casename -v $printFreq -t $tol 
+
+# 	Nt=8
+# 	Np=1
+# 	mpirun -n $Np ./poissonSolver.o $N $N $maxIter $Ngp $Nt $casename -v $printFreq -t $tol 	
+#     done    
+# done
+    
+    
 
 
 

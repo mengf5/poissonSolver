@@ -435,15 +435,17 @@ int inputHandler(int argc, char* argv[]) {
 
 // initialize MPI
 void initializeMPI(int argc, char* argv[]) {
-  //    int request = MPI_THREAD_MULTIPLE;
+  /* int request = MPI_THREAD_MULTIPLE; */
   // does yours support the multiple? 
-    int request = MPI_THREAD_FUNNELED;
-    MPI_Init_thread(&argc, &argv, request, &threadSupport);
-    if (request != threadSupport) {
-        if (myRank == 0) {
-            printf("You requested level %d support but only have level %d support.\n", request, threadSupport);
-        }
+  int request = MPI_THREAD_FUNNELED;
+  MPI_Init_thread(&argc, &argv, request, &threadSupport);
+  /* MPI_Init(&argc, &argv); */
+  /* threadSupport = 3; */
+  if (request != threadSupport) {
+    if (myRank == 0) {
+      printf("You requested level %d support but only have level %d support.\n", request, threadSupport);
     }
+  }
   network = MPI_COMM_WORLD;
   MPI_Comm_size(network, &nProc);
   MPI_Comm_rank(network, &myRank);
@@ -770,12 +772,14 @@ int main(int argc, char* argv[]) {
   unsigned long long initialization_time=0;
   unsigned long long calculation_time=0;
   unsigned long long communication_time=0;
+  unsigned long long batch_time=0; // 
 #elif BGQ==0
   double start_cycle_time=0;
   double end_cycle_time=0;
   double initialization_time=0;
   double calculation_time=0;
-  double communication_time=0;
+  double communication_time=0; // does not include batch
+  double batch_time=0; // 
 #endif
 
   // --- Start Timer --- //
@@ -919,6 +923,20 @@ int main(int argc, char* argv[]) {
     // --- Communication --- //
     // --- exchange BBC/TBC --- //
 
+    if (myRank == 0){
+      if (BGQ==0){
+	end_cycle_time = MPI_Wtime();
+	batch_time += end_cycle_time-start_cycle_time;
+        start_cycle_time = end_cycle_time;
+      }
+      else{
+	end_cycle_time = GetTimeBase();
+	batch_time += end_cycle_time-start_cycle_time;
+        start_cycle_time = end_cycle_time;
+      }
+    }
+
+    // Communication
     if( nProc > 1){
 
       if (myRank == 0) {
@@ -946,11 +964,38 @@ int main(int argc, char* argv[]) {
 	MPI_Wait(&requestRecv2, &status2);
       }
     }
+
+    if (myRank == 0){
+      if (BGQ==0){
+	end_cycle_time = MPI_Wtime();
+	communication_time += end_cycle_time-start_cycle_time;
+        start_cycle_time = end_cycle_time;
+      }
+      else{
+	end_cycle_time = GetTimeBase();
+	communication_time += end_cycle_time-start_cycle_time;
+        start_cycle_time = end_cycle_time;
+      }
+    }
       
     /* printf("rank %d: before update ghost \n",myRank); */
     // --- Update Ghost line value of Un --- //
     updateGhosts();
     /* printf("rank %d: after update ghost \n",myRank); */
+
+    if (myRank == 0){
+      if (BGQ==0){
+	end_cycle_time = MPI_Wtime();
+	batch_time += end_cycle_time-start_cycle_time;
+        start_cycle_time = end_cycle_time;
+      }
+      else{
+	end_cycle_time = GetTimeBase();
+	batch_time += end_cycle_time-start_cycle_time;
+        start_cycle_time = end_cycle_time;
+      }
+    }
+
 
     /* printf("rank %d: hi \n",myRank); */
     // todo figure this out
@@ -1033,19 +1078,37 @@ int main(int argc, char* argv[]) {
   }  
 
   if (verboseFlag) {
-    printf("%s globalError = %9.3e \n",verboseTag,maxGlobalError);
-    printf("%s initialization_time = %9.3e \n",verboseTag,initialization_time);
-    printf("%s calculation_time    = %9.3e \n",verboseTag,calculation_time);
-    printf("%s communication_time  = %9.3e \n",verboseTag,communication_time);
+    if (BGQ==0) {
+      printf("%s globalError = %9.3e \n",verboseTag,maxGlobalError);
+      printf("%s initialization_time = %9.3e \n",verboseTag,initialization_time);
+      printf("%s calculation_time    = %9.3e \n",verboseTag,calculation_time);
+      printf("%s communication_time  = %9.3e \n",verboseTag,communication_time);
+      printf("%s batch_time          = %9.3e \n",verboseTag,batch_time);
+    } else {
+      /* double freq = 1.6e-09; */
+      printf("%s globalError = %llu \n",verboseTag,maxGlobalError);
+      printf("%s initialization_time = %llu \n",verboseTag,initialization_time);
+      printf("%s calculation_time    = %llu \n",verboseTag,calculation_time);
+      printf("%s communication_time  = %llu \n",verboseTag,communication_time);
+      printf("%s batch_time          = %llu \n",verboseTag,batch_time);
+    }
   } else if ((printFrequency == -2) && (myRank == 0)){
 
-    printf("%5s %5s %4s %6s %6s %9s %10s %10s %5s %10s %10s %10s\n",
+
+    printf("%5s %5s %4s %6s %6s %9s %10s %10s %5s %10s %10s %10s %10s\n",
   	   "Nx","Ny","ngp","nIter","nRanks","nThreads",
-	   "res","err","case","tInit","tCalc","tComm");
-    printf("%5d %5d %4d %6d %6d %9d %10.3e %10.3e %5d %10.3e %10.3e %10.3e\n",
-  	   Nx,Ny,ngp,n,nProc,nThreads,err,maxGlobalError,
-	   casenumber,initialization_time,calculation_time,
-	   communication_time);
+	   "res","err","case","tInit","tCalc","tComm","tBatch");
+    if (BGQ==0) {
+      printf("%5d %5d %4d %6d %6d %9d %10.3e %10.3e %5d %10.3e %10.3e %10.3e %10.3e\n",
+	     Nx,Ny,ngp,n,nProc,nThreads,err,maxGlobalError,
+	     casenumber,initialization_time,calculation_time,
+	     communication_time,batch_time);
+    } else {
+      printf("%5d %5d %4d %6d %6d %9d %10.3e %10.3e %5d %llu %llu %llu %llu \n",
+	     Nx,Ny,ngp,n,nProc,nThreads,err,maxGlobalError,
+	     casenumber,initialization_time,calculation_time,
+	     communication_time,batch_time);
+    }
   }
 
 
