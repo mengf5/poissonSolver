@@ -1,0 +1,4 @@
+either tolerance passed or time limit exceeded 
+t_elapsed = 2062510590206 
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+ 8192  8192    1 167495   2048         0  8.323e+00  9.624e-01     2 49438641 1247491548100 739253747800 75734080224 

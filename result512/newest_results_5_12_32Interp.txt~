@@ -1,0 +1,64 @@
+either tolerance passed or time limit exceeded 
+t_elapsed = 2062609960913 
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    1  10129   2048         0  4.407e+04  9.997e-01     2 560322106 1262676700654 758961817344 40677844022 
+either tolerance passed or time limit exceeded 
+t_elapsed = 2062608361037 
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    1  11763    512         4  1.164e+05  9.997e-01     2 1131358818 1391949413866 661783227372 8352121688 
+either tolerance passed or time limit exceeded 
+t_elapsed = 2062528362687 
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    1   3137    128        16  4.928e+05  9.999e-01     2 4122673082 1375024545732 683611044395 2168008729 
+either tolerance passed or time limit exceeded 
+t_elapsed = 2062581358209 
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    1    789     32        64  1.961e+06  1.000e+00     2 16144466512 1367628952011 687833409278 542377921 
+either tolerance passed or time limit exceeded 
+t_elapsed = 2062994433717 
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    4   3535    512         4  1.207e+05  9.996e-01     2 1192529264 1808460632513 240896026025 13063640660 
+either tolerance passed or time limit exceeded 
+t_elapsed = 2064236549271 
+either tolerance passed or time limit exceeded 
+t_elapsed = 2062794084268 
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    4   2662   2048         0  4.091e+04  9.997e-01     2 675599346 1765229386461 244768298976 52397582091 
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    4   1019    128        16  5.865e+05  9.999e-01     2 4186230226 1816962378085 242814840420 2690667863 
+either tolerance passed or time limit exceeded 
+t_elapsed = 2062996061418 
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    8   1055   2048         0  5.767e+04  9.998e-01     2 835069062 1867111384565 158393758948 36953699095 
+either tolerance passed or time limit exceeded 
+t_elapsed = 2063488163513 
+either tolerance passed or time limit exceeded 
+t_elapsed = 2066059863705 
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    8   1712    512         4  1.995e+05  9.996e-01     2 1269845034 1912880222120 135066838928 14900052842 
+either tolerance passed or time limit exceeded 
+t_elapsed = 2065679766477 
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    8    526    128        16  8.875e+05  9.999e-01     2 4247075396 1932721155409 128346077143 2785616230 
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    4    260     32        64  2.295e+06  1.000e+00     2 16256050366 1812528699136 246224698029 686439281 
+either tolerance passed or time limit exceeded 
+t_elapsed = 2069913908253 
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    8    137     32        64  3.401e+06  1.000e+00     2 16314072206 1931142438645 131368372879 725257610 
+either tolerance passed or time limit exceeded 
+t_elapsed = 2067068060651 
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768   16    369   2048         0  9.745e+04  9.998e-01     2 1147106714 1959185310631 81543318537 25522032066 
+either tolerance passed or time limit exceeded 
+t_elapsed = 2062577347334 
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768   16    743    512         4  4.378e+05  9.997e-01     2 1420205857 1979039593554 70438848800 12324266013 
+either tolerance passed or time limit exceeded 
+t_elapsed = 2065825352841 
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768   16    256    128        16  1.616e+06  9.999e-01     2 4373443266 1996122502738 65015774063 2744409741 
+either tolerance passed or time limit exceeded 
+t_elapsed = 2065113158697 
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768   16     69     32        64  5.919e+06  1.000e+00     2 16435952030 1989714075721 67869807888 735729449 
