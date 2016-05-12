@@ -1,0 +1,40 @@
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    1   2726    512         0  5.673e+05  9.999e-01     2      3.19       2006.4     1273.7     18.4
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    1   2988    128         4  5.181e+05  9.999e-01     2      6.9        2242.2     1051.4    3.4
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    1    788     32        16  1.962e+06  1.000e+00     2      26.1        2187.3     1102.6    0.86
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    1    195      8        64  7.892e+06  1.000e+00     2      103.1      2166.7     1099.4    0.21
+
+
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    4    883    512         0  4.374e+05  9.999e-01     2      3.3       2835.7       437.9     27.1
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    4    956    128         4  6.209e+05  9.999e-01     2     7.1         2918.0     374.8      5.5
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    4    259     32        16  1.652e+06  1.000e+00     2      26.3       2895.4     395.9      1.09
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    4     64      8        64  6.277e+06  1.000e+00     2       103.6     2876.9      398.8     0.27
+
+
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    8    425    512         0  4.539e+05  9.999e-01     2      3.64       3015.4      262.6      25.3
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    8    497    128         4  9.372e+05  9.999e-01     2      7.25       3081.4      208.6      6.8
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    8    137     32        16  2.473e+06  1.000e+00     2      26.4       3097.3      213.8      1.16
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768    8     34      8        64  9.293e+06  1.000e+00     2      103.7      3104.7      219.4      0.29
+
+
+
+
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768   16    184    512         0  5.226e+05  9.999e-01     2     4.1         3144.2     138.4      20.4
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768   16    246    128         4  1.674e+06  9.999e-01     2     7.4         3191.2     110.5      5.7
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768   16     69     32        16  4.393e+06  1.000e+00     2     26.7        3192.0     111.3      1.1
+   Nx    Ny  ngp  nIter nRanks  nThreads        res        err  case      tInit      tCalc      tComm     tBatch
+32768 32768   16     17      8        64  1.678e+07  1.000e+00     2     103.9       3207.4     117.7      0.3
