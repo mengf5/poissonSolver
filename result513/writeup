@@ -1,0 +1,17 @@
+First, we introduce normalize timing that we are going to use to compare the performance runs. Since we did all of our runs for the same total amount of time. tTherefore we avergae the time for each portion of our solver by the total number of PDE solves, which is equals to $\verb!Ngp! \cdot \verb!NIter!$.
+
+
+%%nodes
+
+First, we study the scaling as we increasing the number of nodes. To rule out the effect of difference rank/thread/\verb!Ngp! configuration, we first study the speed up of the total normalized time per PDE solve for the same rank/thread/\verb!Ngp! configuration with different number of nodes. The average speed up we see from 8 nodes to 16 nodes is $1.9228$, the average speed up from 16 nodes to 32 nodes is $1.8557$. The max speed up $2.08$;
+
+
+%% now, we move on to discuss how the rank/threds combination alter the performance of the simulations. Again, to seperate the effect, we study the speed up as we use different rank/thread combination with the same \verb!Ngp! and number of nodes.
+
+For each combination of \verb!Ngp!/nodes, we have a slight speed up as we move from 64 ranks/1threads to 16 ranks/4threads. The average speed up is $1.33$. we have uniformly better speed up when we increase the number of nodes. Also we have more speed up as we increase the number of ghost points. the maximum speed up for all nodes are the 16 \verb!Ngp! cases, and the average speed up for these cases are $1.33$,$1.61$ and $2.01$.
+
+However, as we further increase the number of threads and decrease the number of nodes, the total time per iteration has been slowed down drastically. The average rate of speed up instead is around $0.25$ as we move from 4 to 16 and 16 to 64 threads.
+
+
+
+
