@@ -1,23 +1,67 @@
-5/9/16
-Instructions for BGQ:
- - change the code to have
-   #define BGQ 1
-   instead of 
+%-----------------------------------------------------------------------------------
+This is a description for how to make and run our parallel Poisson equation solver in BG/Q
+%-----------------------------------------------------------------------------------
+
+a) Make executable::
+
+$ module load xl
+$ make 
+
+b) Run the command
+
+The usage information is read in to the executable from::
+<bgq_single_run_gp.sh>
+A detailed introduction of the input variables is in the beginning of this file.
+
+We specify these input variables in(If you want to change any input, dive in this)::
+<bgq_run_cases_new.sh>
+
+To run the case, you need to,
+
+$ chmod +x *.sh
+$ bgq_run_cases_new.sh
+
+%-----------------------------------------------------------------------------------
+Changes for Kratos or your local machine
+%-----------------------------------------------------------------------------------
+ - change the code <poissonSolverWithoutRandom.c> to have
    #define BGQ 0
+   instead of 
+   #define BGQ 1
  - change makefile from 
+	mpixlc poissonSolverWithoutRandom.c poissonProblemInputs.c -lm -I. -pthread -O3 -o poissonSolver.o
+   to::
 	mpicc poissonSolverWithoutRandom.c poissonProblemInputs.c -lm -I. -lpthread -g -o poissonSolver.o	
-   to
-	mpixlc poissonSolverWithoutRandom.c poissonProblemInputs.c -lm -I. -pthread -O3 -o poissonSolver.o	
- - run the command 
-   chmod +x *.sh
-   so you can run the shell files
+ 
 
 
-Read me first:
+%-----------------------------------------------------------------------------------
+Group members and contributions
+%-----------------------------------------------------------------------------------
+Total work of this project is separated in the following sections. We put the numbers we worked on after our name. 
 
-There are several ways to get rid of the need for extern in the extra function files. I have done so in what I believe to be the simplest way, although it's not the cleanest. Here's how it works:
+  Code::
+1. implemented the algorithm,
+2. implemented the parallel part of the code,
+3. implemented the supported part in the code(usage, error checking, etc.)
 
-(1) "Public" variables: any global variables that will be used in both files must be declared in the exact same way in both files.
-(2) External functions: functions that are designed in poissonProblemInputs must be declared in poissonSolverWithoutRandom before they are called. For example, the function initializeProblemInputs is designed in poissonProblemInputs, but it is delcared in poissonSolverWithoutRandom before main.
+  Testing::
+4. Checked the convergence rate of the code and make sure the code works on our local machine.
 
-I have run several tests with this file and also with smaller test files, and everything works fine. If you are having trouble with this, please let me know.
+Runs and Results::
+5. Ruined performance tests on BG\Q,
+6. Parsed output data, made presentable tables and plots.
+
+Paper::
+7. Problem specification
+8. Code Implementation
+9. Results
+10. Summary and future work
+11. References
+
+
+Fanlong Meng, 1,2,3,4,5,6,9
+Edward Rusu, 1,3,7,8,9,10,11
+Daniel Serino, 1,2,3,4,5*,6,10,11
+
+
