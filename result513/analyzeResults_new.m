@@ -87,6 +87,7 @@ for i = 1:length(nodes)
     set(gca,'Xtick',[data1(:,1)])
     set(gca,'Color','White')
     xlim([data1(1,1)*.5,data1(end,1)*4])
+    ylim([1e-02,1e01])
     grid on
     set(gca,'FontSize',12)
     xl = get(gca,'xlabel');
@@ -114,6 +115,7 @@ for i = 1:length(nodes)
     set(gca,'Xtick',[data1(:,1)])
     set(gca,'Color','White')
     xlim([data1(1,1)*.5,data1(end,1)*4])
+    ylim([1e-02,1e01])
     grid on
     set(gca,'FontSize',12)
     xl = get(gca,'xlabel');
@@ -137,6 +139,7 @@ for i = 1:length(nodes)
     ylabel(['(t_{comm}+t_{batch}) / t_{calc} '])
     title([num2str(node),' nodes'])
     xlim([data1(1,1)*.5,data1(end,1)*4])
+    ylim([1e-02,1e01])
     set(gca,'xscale','log')
     set(gca,'yscale','log')
     set(gca,'Xtick',[data1(:,1)])
